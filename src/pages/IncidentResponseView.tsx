@@ -5,9 +5,9 @@ import KPICards from "@/components/KPICards";
 import LaneDetails from "@/components/LaneDetails";
 import ReroutePanel from "@/components/ReroutePanel";
 import GenAIDrawer from "@/components/GenAIDrawer";
-import { getCenters, getLanes, getIncidents } from "@/lib/mockApi";
+import { getCenters, getLanes, getIncidents, getAllShipments } from "@/lib/mockApi";
 import { Button } from "@/components/ui/button";
-import type { Center, Lane, Incident } from "@/types/domain";
+import type { Center, Lane, Incident, Shipment } from "@/types/domain";
 import { Sparkles, Filter, Brain, CheckCircle } from "lucide-react";
 import databricksLogo from "@/assets/databricks_logo.svg";
 import { clearAllSessionState } from "@/lib/sessionState";
@@ -23,6 +23,8 @@ export default function IncidentResponseView() {
   const [genPayload] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [riskFilter, setRiskFilter] = useState<string>("");
+  const [customerFilter, setCustomerFilter] = useState<string>("");
+  const [shipments, setShipments] = useState<Shipment[]>([]);
   const [triggerAnalysis, setTriggerAnalysis] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
@@ -50,15 +52,47 @@ export default function IncidentResponseView() {
   useEffect(() => {
     Promise.all([
       getCenters(), 
-      getLanes()
-    ]).then(([centersData, lanesData]) => {
+      getLanes(),
+      getAllShipments()
+    ]).then(([centersData, lanesData, shipmentsData]) => {
       setCenters(centersData);
       setLanes(lanesData);
+      setShipments(shipmentsData);
       setLoading(false);
     });
   }, []);
 
-  // Filter lanes based on risk level
+  // Format customer ID into user-friendly display name
+  const formatCustomerName = (customerId: string): string => {
+    // Convert to lowercase first for consistent processing
+    const normalized = customerId.toLowerCase();
+    
+    // Split by dash or keep as single word
+    const parts = normalized.split('-');
+    
+    // Capitalize each word
+    const formatted = parts.map(word => {
+      // Special handling for common abbreviations
+      if (word === 'techcorp') return 'TechCorp';
+      if (word === 'bestbuy') return 'Best Buy';
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+    
+    return formatted;
+  };
+
+  // Get unique customers from shipments
+  const uniqueCustomers = useMemo(() => {
+    const customerSet = new Set<string>();
+    shipments.forEach(shipment => {
+      if (shipment.customerId) {
+        customerSet.add(shipment.customerId);
+      }
+    });
+    return Array.from(customerSet).sort();
+  }, [shipments]);
+
+  // Filter lanes based on risk level and customer
   const filteredLanes = useMemo(() => {
     let filtered = lanes;
     
@@ -79,8 +113,18 @@ export default function IncidentResponseView() {
       });
     }
     
+    // Apply customer filter
+    if (customerFilter) {
+      const customerLaneIds = new Set(
+        shipments
+          .filter(s => s.customerId === customerFilter)
+          .map(s => s.laneId)
+      );
+      filtered = filtered.filter(lane => customerLaneIds.has(lane.id));
+    }
+    
     return filtered;
-  }, [lanes, riskFilter]);
+  }, [lanes, riskFilter, customerFilter, shipments]);
 
   // Load incidents when lane is selected
   useEffect(() => {
@@ -122,18 +166,25 @@ export default function IncidentResponseView() {
 
       {/* Header */}
       <div className="border-b px-6 py-3 flex items-center justify-between" style={{ backgroundColor: '#1B3139' }}>
-        {/* Left: Logo and Title */}
+        {/* Left: Logo and Live Ticker */}
         <div className="flex items-center gap-4 flex-1">
           <img src={databricksLogo} alt="Databricks" className="h-12" />
           <div className="border-l border-white/20 pl-4 ml-2">
-            <p className="text-xs text-white/80">Incident Response</p>
-            <p className="text-xs text-white/80">& Network Operations</p>
+            <button 
+              onClick={handleDemoReset}
+              className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer group"
+              title="Click to reset demo state (or use Cmd/Ctrl+Shift+R)"
+            >
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse group-hover:bg-green-300"></div>
+              <span className="text-white/80 group-hover:text-white">Live</span>
+            </button>
           </div>
         </div>
         
-        {/* Center: Title */}
-        <div className="flex items-center justify-center flex-1">
+        {/* Center: Title with Subtitle */}
+        <div className="flex flex-col items-center justify-center flex-1">
           <h2 className="text-3xl font-semibold text-white">Network Control Center</h2>
+          <p className="text-xs text-white/70 mt-1">Incident Response & Network Operations</p>
         </div>
         
         {/* Right: Filters */}
@@ -156,14 +207,24 @@ export default function IncidentResponseView() {
             </select>
           </div>
           
-          <button 
-            onClick={handleDemoReset}
-            className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer group"
-            title="Click to reset demo state (or use Cmd/Ctrl+Shift+R)"
-          >
-            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse group-hover:bg-green-300"></div>
-            <span className="text-white/80 group-hover:text-white">Live</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <select 
+              value={customerFilter}
+              onChange={(e) => {
+                setCustomerFilter(e.target.value);
+                setSelectedLaneId(null);
+              }}
+              className="bg-white/10 border border-white/20 text-white rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
+              style={{ color: 'white' }}
+            >
+              <option value="" style={{ backgroundColor: '#1B3139', color: 'white' }}>All Customers</option>
+              {uniqueCustomers.map(customerId => (
+                <option key={customerId} value={customerId} style={{ backgroundColor: '#1B3139', color: 'white' }}>
+                  {formatCustomerName(customerId)}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -182,21 +243,30 @@ export default function IncidentResponseView() {
           <Legend viewMode="congestion" />
           
           {/* Filter Badges */}
-          {riskFilter && (
+          {(riskFilter || customerFilter) && (
             <div className="absolute top-4 left-4 flex flex-col gap-2">
-              <div 
-                className="px-4 py-2 rounded-lg shadow-lg text-sm font-medium"
-                style={{
-                  backgroundColor: riskFilter === "low" 
-                    ? "rgb(34, 197, 94)" 
-                    : riskFilter === "medium" 
-                    ? "rgb(250, 204, 21)" 
-                    : "rgb(239, 68, 68)",
-                  color: riskFilter === "medium" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)"
-                }}
-              >
-                {riskFilter === "low" ? "🟢 On-time" : riskFilter === "medium" ? "🟡 Caution" : "🔴 At-risk"}
-              </div>
+              {riskFilter && (
+                <div 
+                  className="px-4 py-2 rounded-lg shadow-lg text-sm font-medium"
+                  style={{
+                    backgroundColor: riskFilter === "low" 
+                      ? "rgb(34, 197, 94)" 
+                      : riskFilter === "medium" 
+                      ? "rgb(250, 204, 21)" 
+                      : "rgb(239, 68, 68)",
+                    color: riskFilter === "medium" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)"
+                  }}
+                >
+                  {riskFilter === "low" ? "🟢 On-time" : riskFilter === "medium" ? "🟡 Caution" : "🔴 At-risk"}
+                </div>
+              )}
+              {customerFilter && (
+                <div 
+                  className="px-4 py-2 rounded-lg shadow-lg text-sm font-medium bg-blue-600 text-white"
+                >
+                  👤 {formatCustomerName(customerFilter)}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -270,6 +340,7 @@ export default function IncidentResponseView() {
           onComplete={() => {
             setSelectedLaneId(null);
             setRiskFilter("");
+            setCustomerFilter("");
           }}
         />
       )}
