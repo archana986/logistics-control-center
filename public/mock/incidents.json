@@ -1,0 +1,209 @@
+[
+  {
+    "laneId": "BNA-STL-AIR",
+    "timestamp": "2025-10-21T10:30:00Z",
+    "type": "flight_delay",
+    "ref": "FX423",
+    "cause": "Ice storm in Missouri",
+    "impactMinutes": 140,
+    "confidence": 0.91
+  },
+  {
+    "laneId": "BNA-STL-GROUND",
+    "timestamp": "2025-10-21T08:10:00Z",
+    "type": "highway_closure",
+    "ref": "I-65",
+    "cause": "Multi-vehicle accident at mile marker 172",
+    "impactThroughputPct": -38,
+    "confidence": 0.82
+  },
+  {
+    "laneId": "BNA-STL-AIR",
+    "timestamp": "2025-10-21T14:15:00Z",
+    "type": "flight_delay",
+    "ref": "FX891",
+    "cause": "Landing gear mechanical issue - hydraulic actuator failure",
+    "impactMinutes": 180,
+    "confidence": 0.95
+  },
+  {
+    "laneId": "SEA-ANC-AIR",
+    "timestamp": "2025-10-21T22:45:00Z",
+    "type": "weather",
+    "ref": "Winter Storm Warning",
+    "cause": "Heavy snowfall in Anchorage - 18 inches expected",
+    "impactMinutes": 180,
+    "confidence": 0.94
+  },
+  {
+    "laneId": "OAK-SEA-AIR",
+    "timestamp": "2025-10-21T21:30:00Z",
+    "type": "flight_delay",
+    "ref": "FX1247",
+    "cause": "Fog at Seattle-Tacoma reducing visibility",
+    "impactMinutes": 65,
+    "confidence": 0.87
+  },
+  {
+    "laneId": "ATL-MIA-AIR",
+    "timestamp": "2025-10-21T16:20:00Z",
+    "type": "weather",
+    "ref": "Tropical Storm Alert",
+    "cause": "Tropical depression moving through South Florida",
+    "impactMinutes": 120,
+    "confidence": 0.93
+  },
+  {
+    "laneId": "LAX-PHX-GROUND",
+    "timestamp": "2025-10-21T12:00:00Z",
+    "type": "highway_delay",
+    "ref": "I-10",
+    "cause": "Construction bottleneck near Palm Springs",
+    "impactThroughputPct": -22,
+    "confidence": 0.79
+  },
+  {
+    "laneId": "ORD-EWR-AIR",
+    "timestamp": "2025-10-21T18:45:00Z",
+    "type": "air_traffic_control",
+    "ref": "EWR Ground Stop",
+    "cause": "Air traffic congestion at Newark - ground stop issued",
+    "impactMinutes": 85,
+    "confidence": 0.96
+  },
+  {
+    "laneId": "DFW-LAX-AIR",
+    "timestamp": "2025-10-21T15:30:00Z",
+    "type": "flight_delay",
+    "ref": "FX2156",
+    "cause": "Crew scheduling conflict",
+    "impactMinutes": 55,
+    "confidence": 0.82
+  },
+  {
+    "laneId": "PIT-ORD-AIR",
+    "timestamp": "2025-10-21T06:15:00Z",
+    "type": "equipment_issue",
+    "ref": "Sort System A7",
+    "cause": "Automated sorting equipment malfunction at Pittsburgh",
+    "impactThroughputPct": -15,
+    "confidence": 0.91
+  },
+  {
+    "laneId": "EWR-BOS-GROUND",
+    "timestamp": "2025-10-21T19:00:00Z",
+    "type": "traffic_congestion",
+    "ref": "I-95 North",
+    "cause": "Heavy rush hour traffic through Connecticut",
+    "impactMinutes": 35,
+    "confidence": 0.76
+  },
+  {
+    "laneId": "ATL-CLT-GROUND",
+    "timestamp": "2025-10-21T11:30:00Z",
+    "type": "vehicle_breakdown",
+    "ref": "Truck 4892",
+    "cause": "Mechanical failure - tire blowout on I-85",
+    "impactThroughputPct": -8,
+    "confidence": 0.85
+  },
+  {
+    "laneId": "DEN-SLC-AIR",
+    "timestamp": "2025-10-21T20:00:00Z",
+    "type": "weather",
+    "ref": "Mountain Wind Advisory",
+    "cause": "High winds over Rocky Mountains - 45mph gusts",
+    "impactMinutes": 40,
+    "confidence": 0.88
+  },
+  {
+    "laneId": "BNA-ATL-AIR",
+    "timestamp": "2025-10-21T13:45:00Z",
+    "type": "flight_delay",
+    "ref": "FX567",
+    "cause": "Late inbound aircraft from previous route",
+    "impactMinutes": 48,
+    "confidence": 0.84
+  },
+  {
+    "laneId": "PHX-LAS-GROUND",
+    "timestamp": "2025-10-21T17:00:00Z",
+    "type": "highway_delay",
+    "ref": "US-93",
+    "cause": "Border patrol checkpoint causing delays",
+    "impactMinutes": 25,
+    "confidence": 0.73
+  },
+  {
+    "laneId": "PIT-STL-GROUND",
+    "timestamp": "2025-10-21T09:20:00Z",
+    "type": "inspection_delay",
+    "ref": "Checkpoint Inspection",
+    "cause": "Additional inspection required for cargo at DOT checkpoint",
+    "impactMinutes": 35,
+    "confidence": 0.89
+  },
+  {
+    "laneId": "ORD-DEN-AIR",
+    "timestamp": "2025-10-21T14:00:00Z",
+    "type": "weather",
+    "ref": "Winter Weather Advisory",
+    "cause": "Light snow showers at Denver International",
+    "impactMinutes": 30,
+    "confidence": 0.81
+  },
+  {
+    "laneId": "LAX-DEN-AIR",
+    "timestamp": "2025-10-21T16:45:00Z",
+    "type": "flight_delay",
+    "ref": "FX3421",
+    "cause": "Fueling delay at LAX",
+    "impactMinutes": 28,
+    "confidence": 0.77
+  },
+  {
+    "laneId": "SEA-ORD-AIR",
+    "timestamp": "2025-10-21T23:00:00Z",
+    "type": "flight_delay",
+    "ref": "FX1089",
+    "cause": "Connecting cargo delayed from international flight",
+    "impactMinutes": 52,
+    "confidence": 0.86
+  },
+  {
+    "laneId": "ATL-EWR-AIR",
+    "timestamp": "2025-10-21T17:30:00Z",
+    "type": "air_space_restriction",
+    "ref": "Presidential TFR",
+    "cause": "Temporary flight restriction - VIP movement",
+    "impactMinutes": 45,
+    "confidence": 0.92
+  },
+  {
+    "laneId": "DFW-ATL-AIR",
+    "timestamp": "2025-10-21T12:15:00Z",
+    "type": "equipment_issue",
+    "ref": "Aircraft N827FD",
+    "cause": "Cargo door sensor malfunction",
+    "impactMinutes": 70,
+    "confidence": 0.90
+  },
+  {
+    "laneId": "BNA-EWR-AIR",
+    "timestamp": "2025-10-21T07:45:00Z",
+    "type": "flight_delay",
+    "ref": "FX234",
+    "cause": "Air traffic control slot delay",
+    "impactMinutes": 42,
+    "confidence": 0.83
+  },
+  {
+    "laneId": "BNA-DFW-GROUND",
+    "timestamp": "2025-10-21T11:25:00Z",
+    "type": "vehicle_maintenance",
+    "ref": "Truck T918FX",
+    "cause": "Routine brake fluid level check - minor top-off required",
+    "impactMinutes": 22,
+    "confidence": 0.94
+  }
+]

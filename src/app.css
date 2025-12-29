@@ -1,0 +1,31 @@
+/* Additional app-specific styles */
+.maplibregl-map {
+  font-family: inherit;
+}
+
+.maplibregl-ctrl-group {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+}
+
+.maplibregl-ctrl button {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+}
+
+.maplibregl-ctrl button:hover {
+  background: hsl(var(--accent));
+}
+
+/* Deck.gl tooltip styling */
+.deck-tooltip {
+  font-family: inherit;
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  padding: 8px 12px;
+  border-radius: 6px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  font-size: 14px;
+  pointer-events: none;
+}
+ 

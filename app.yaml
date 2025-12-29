@@ -1,0 +1,24 @@
+# Databricks App Configuration
+# This app has a React frontend and a Python FastAPI backend
+# Following the pattern from: https://www.databricks.com/blog/building-databricks-apps-react-and-mosaic-ai-agents-enterprise-chat-solutions
+
+# Command to start the application using Gunicorn with Uvicorn workers
+# First build the frontend, then start the backend which serves both API and static files
+command: 
+  - "sh"
+  - "-c"
+  - |
+    pip install -r requirements.txt && \
+    npm install && \
+    npm run build && \
+    gunicorn backend.main:app -w 2 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+
+# Environment variables
+env:
+  - name: NODE_ENV
+    value: production
+  - name: DATABRICKS_MODEL_ENDPOINT
+    value: databricks-gpt-5-1
+  - name: VITE_BACKEND_URL
+    value: /api
+

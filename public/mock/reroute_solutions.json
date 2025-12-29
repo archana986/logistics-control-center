@@ -1,0 +1,154 @@
+[
+  {
+    "laneId": "BNA-STL-AIR",
+    "strategy": "TRUCK-VIA-ORD",
+    "deltaETAminutes": -1140,
+    "addedCostUSD": 3100,
+    "capacityUsedPct": 42,
+    "notes": "Consolidate on two night trucks BNA→ORD→STL; priority dock slot in STL. Avoids weather delays and provides guaranteed delivery window."
+  },
+  {
+    "laneId": "BNA-STL-AIR",
+    "strategy": "AIR-VIA-ATL",
+    "deltaETAminutes": -960,
+    "addedCostUSD": 4800,
+    "capacityUsedPct": 28,
+    "notes": "Reroute through Atlanta hub with FX connections. Higher cost but faster alternative if weather clears."
+  },
+  {
+    "laneId": "BNA-STL-AIR",
+    "strategy": "AIR-VIA-PIT",
+    "deltaETAminutes": -1320,
+    "addedCostUSD": 2800,
+    "capacityUsedPct": 35,
+    "notes": "Route through Pittsburgh International hub with automated sort. Best cost/speed balance with minimal weather exposure."
+  },
+  {
+    "laneId": "SEA-ANC-AIR",
+    "strategy": "DELAY-24HR",
+    "deltaETAminutes": 1440,
+    "addedCostUSD": 0,
+    "capacityUsedPct": 0,
+    "notes": "Wait for winter storm to pass. Weather expected to clear within 24 hours. No alternative route available for Alaska service."
+  },
+  {
+    "laneId": "ATL-MIA-AIR",
+    "strategy": "GROUND-EXPEDITED",
+    "deltaETAminutes": -780,
+    "addedCostUSD": 2200,
+    "capacityUsedPct": 55,
+    "notes": "Dedicated expedited ground service via I-95. Avoids tropical storm flight cancellations with guaranteed delivery."
+  },
+  {
+    "laneId": "ORD-EWR-AIR",
+    "strategy": "AIR-VIA-ATL",
+    "deltaETAminutes": -900,
+    "addedCostUSD": 3900,
+    "capacityUsedPct": 31,
+    "notes": "Connect through Atlanta to bypass Newark ground stop. Additional flight time but avoids ATC delays."
+  },
+  {
+    "laneId": "ORD-EWR-AIR",
+    "strategy": "AIR-VIA-BNA",
+    "deltaETAminutes": -720,
+    "addedCostUSD": 4200,
+    "capacityUsedPct": 26,
+    "notes": "Route through Nashville SuperHub with guaranteed capacity. Fastest alternative routing option."
+  },
+  {
+    "laneId": "DFW-LAX-AIR",
+    "strategy": "GROUND-VIA-PHX",
+    "deltaETAminutes": -660,
+    "addedCostUSD": 1800,
+    "capacityUsedPct": 48,
+    "notes": "Overnight ground via Phoenix hub. Reliable alternative during crew scheduling issues."
+  },
+  {
+    "laneId": "SEA-ORD-AIR",
+    "strategy": "AIR-VIA-DEN",
+    "deltaETAminutes": -840,
+    "addedCostUSD": 3400,
+    "capacityUsedPct": 33,
+    "notes": "Connect through Denver Mountain Hub. Avoids international cargo delays with dedicated domestic capacity."
+  },
+  {
+    "laneId": "DFW-ATL-AIR",
+    "strategy": "GROUND-EXPEDITED",
+    "deltaETAminutes": -1020,
+    "addedCostUSD": 2900,
+    "capacityUsedPct": 52,
+    "notes": "Direct expedited ground service. Avoids aircraft maintenance issues with guaranteed schedule."
+  },
+  {
+    "laneId": "BNA-STL-GROUND",
+    "strategy": "AIR-DIRECT",
+    "deltaETAminutes": -1560,
+    "addedCostUSD": 5200,
+    "capacityUsedPct": 38,
+    "notes": "Switch to air freight on next available flight. Bypasses I-65 highway closure with fastest delivery option."
+  },
+  {
+    "laneId": "BNA-STL-GROUND",
+    "strategy": "GROUND-VIA-PIT",
+    "deltaETAminutes": -1200,
+    "addedCostUSD": 2400,
+    "capacityUsedPct": 45,
+    "notes": "Reroute ground service through Pittsburgh hub via alternate highways. Avoids I-65 closure with minimal added cost."
+  },
+  {
+    "laneId": "BNA-STL-GROUND",
+    "strategy": "GROUND-VIA-STL",
+    "deltaETAminutes": -1380,
+    "addedCostUSD": 2800,
+    "capacityUsedPct": 51,
+    "notes": "Northern route through St. Louis using I-64 and I-70. Completely avoids affected highway segment with reliable schedule."
+  },
+  {
+    "laneId": "BNA-ATL-AIR",
+    "strategy": "AIR-VIA-BHM",
+    "deltaETAminutes": -900,
+    "addedCostUSD": 3200,
+    "capacityUsedPct": 29,
+    "notes": "Connect through Birmingham with regional carrier partner. Avoids Nashville departure delays with quick turnaround."
+  },
+  {
+    "laneId": "BNA-ATL-AIR",
+    "strategy": "GROUND-EXPEDITED",
+    "deltaETAminutes": -720,
+    "addedCostUSD": 1900,
+    "capacityUsedPct": 58,
+    "notes": "Priority ground service via I-55 and I-20. Weather-independent alternative with lower cost than air reroute."
+  },
+  {
+    "laneId": "BNA-ATL-AIR",
+    "strategy": "AIR-VIA-PIT",
+    "deltaETAminutes": -1080,
+    "addedCostUSD": 3600,
+    "capacityUsedPct": 32,
+    "notes": "Route through Pittsburgh International with automated sort. Guaranteed capacity and fastest reliable option."
+  },
+  {
+    "laneId": "BNA-DFW-GROUND",
+    "strategy": "GROUND-VIA-LIT",
+    "deltaETAminutes": -720,
+    "addedCostUSD": 1800,
+    "capacityUsedPct": 45,
+    "notes": "Reroute ground service through Little Rock via alternate highways. Avoids I-40 construction with reliable schedule."
+  },
+  {
+    "laneId": "BNA-DFW-GROUND",
+    "strategy": "AIR-EXPEDITED",
+    "deltaETAminutes": -1020,
+    "addedCostUSD": 4100,
+    "capacityUsedPct": 35,
+    "notes": "Switch to expedited air freight on next available flight. Bypasses highway delays with fastest delivery option."
+  },
+  {
+    "laneId": "BNA-DFW-GROUND",
+    "strategy": "GROUND-VIA-OKC",
+    "deltaETAminutes": -840,
+    "addedCostUSD": 2200,
+    "capacityUsedPct": 48,
+    "notes": "Route via Oklahoma City distribution center with team driver relay. Faster ground alternative with minimal cost increase."
+  }
+]

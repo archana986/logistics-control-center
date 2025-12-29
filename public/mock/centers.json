@@ -1,0 +1,142 @@
+[
+  {
+    "id": "BNA",
+    "name": "Nashville SuperHub",
+    "lat": 36.124,
+    "lng": -86.678,
+    "type": "air_hub"
+  },
+  {
+    "id": "STL",
+    "name": "Saint Louis Hub",
+    "lat": 38.747,
+    "lng": -90.361,
+    "type": "dc"
+  },
+  {
+    "id": "ORD",
+    "name": "Chicago O'Hare Hub",
+    "lat": 41.974,
+    "lng": -87.907,
+    "type": "air_hub"
+  },
+  {
+    "id": "ATL",
+    "name": "Atlanta Hub",
+    "lat": 33.640,
+    "lng": -84.427,
+    "type": "air_hub"
+  },
+  {
+    "id": "DFW",
+    "name": "Dallas-Fort Worth SuperHub",
+    "lat": 32.897,
+    "lng": -97.038,
+    "type": "air_hub"
+  },
+  {
+    "id": "LAX",
+    "name": "Los Angeles Hub",
+    "lat": 33.942,
+    "lng": -118.408,
+    "type": "air_hub"
+  },
+  {
+    "id": "EWR",
+    "name": "Newark Gateway Hub",
+    "lat": 40.692,
+    "lng": -74.169,
+    "type": "air_hub"
+  },
+  {
+    "id": "OAK",
+    "name": "Oakland West Coast Hub",
+    "lat": 37.721,
+    "lng": -122.221,
+    "type": "air_hub"
+  },
+  {
+    "id": "PHX",
+    "name": "Phoenix Distribution Hub",
+    "lat": 33.435,
+    "lng": -112.006,
+    "type": "dc"
+  },
+  {
+    "id": "SEA",
+    "name": "Seattle-Tacoma Hub",
+    "lat": 47.449,
+    "lng": -122.309,
+    "type": "air_hub"
+  },
+  {
+    "id": "MIA",
+    "name": "Miami International Hub",
+    "lat": 25.796,
+    "lng": -80.274,
+    "type": "air_hub"
+  },
+  {
+    "id": "DEN",
+    "name": "Denver Mountain Hub",
+    "lat": 39.856,
+    "lng": -104.673,
+    "type": "air_hub"
+  },
+  {
+    "id": "PIT",
+    "name": "Pittsburgh International Hub",
+    "lat": 40.491,
+    "lng": -80.233,
+    "type": "air_hub"
+  },
+  {
+    "id": "ANC",
+    "name": "Anchorage International Hub",
+    "lat": 61.174,
+    "lng": -149.996,
+    "type": "air_hub"
+  },
+  {
+    "id": "BOS",
+    "name": "Boston Regional Hub",
+    "lat": 42.365,
+    "lng": -71.010,
+    "type": "dc"
+  },
+  {
+    "id": "PHL",
+    "name": "Philadelphia Hub",
+    "lat": 39.872,
+    "lng": -75.241,
+    "type": "dc"
+  },
+  {
+    "id": "MSP",
+    "name": "Minneapolis-St. Paul Hub",
+    "lat": 44.883,
+    "lng": -93.222,
+    "type": "dc"
+  },
+  {
+    "id": "SLC",
+    "name": "Salt Lake City Hub",
+    "lat": 40.789,
+    "lng": -111.978,
+    "type": "dc"
+  },
+  {
+    "id": "CLT",
+    "name": "Charlotte Regional Hub",
+    "lat": 35.214,
+    "lng": -80.943,
+    "type": "dc"
+  },
+  {
+    "id": "LAS",
+    "name": "Las Vegas Distribution Center",
+    "lat": 36.081,
+    "lng": -115.152,
+    "type": "dc"
+  }
+]

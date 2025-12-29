@@ -1,0 +1,362 @@
+[
+  {
+    "id": "BNA-PIT-AIR",
+    "origin": "BNA",
+    "dest": "PIT",
+    "mode": "air",
+    "avgDailyVolume": 425000,
+    "onTimePct": 0.96,
+    "delayMinutes": 18,
+    "slaRiskPct": 0.04
+  },
+  {
+    "id": "PIT-ORD-AIR",
+    "origin": "PIT",
+    "dest": "ORD",
+    "mode": "air",
+    "avgDailyVolume": 380000,
+    "onTimePct": 0.95,
+    "delayMinutes": 22,
+    "slaRiskPct": 0.05
+  },
+  {
+    "id": "BNA-STL-AIR",
+    "origin": "BNA",
+    "dest": "STL",
+    "mode": "air",
+    "avgDailyVolume": 285000,
+    "onTimePct": 0.87,
+    "delayMinutes": 140,
+    "slaRiskPct": 0.13
+  },
+  {
+    "id": "BNA-STL-GROUND",
+    "origin": "BNA",
+    "dest": "STL",
+    "mode": "ground",
+    "avgDailyVolume": 125000,
+    "onTimePct": 0.78,
+    "delayMinutes": 185,
+    "slaRiskPct": 0.22
+  },
+  {
+    "id": "BNA-ORD-AIR",
+    "origin": "BNA",
+    "dest": "ORD",
+    "mode": "air",
+    "avgDailyVolume": 340000,
+    "onTimePct": 0.94,
+    "delayMinutes": 35,
+    "slaRiskPct": 0.06
+  },
+  {
+    "id": "ORD-STL-GROUND",
+    "origin": "ORD",
+    "dest": "STL",
+    "mode": "ground",
+    "avgDailyVolume": 145000,
+    "onTimePct": 0.96,
+    "delayMinutes": 22,
+    "slaRiskPct": 0.04
+  },
+  {
+    "id": "BNA-ATL-AIR",
+    "origin": "BNA",
+    "dest": "ATL",
+    "mode": "air",
+    "avgDailyVolume": 295000,
+    "onTimePct": 0.92,
+    "delayMinutes": 48,
+    "slaRiskPct": 0.08
+  },
+  {
+    "id": "ATL-STL-AIR",
+    "origin": "ATL",
+    "dest": "STL",
+    "mode": "air",
+    "avgDailyVolume": 215000,
+    "onTimePct": 0.95,
+    "delayMinutes": 28,
+    "slaRiskPct": 0.05
+  },
+  {
+    "id": "BNA-DFW-GROUND",
+    "origin": "BNA",
+    "dest": "DFW",
+    "mode": "ground",
+    "avgDailyVolume": 310000,
+    "onTimePct": 0.91,
+    "delayMinutes": 52,
+    "slaRiskPct": 0.09
+  },
+  {
+    "id": "DFW-LAX-AIR",
+    "origin": "DFW",
+    "dest": "LAX",
+    "mode": "air",
+    "avgDailyVolume": 365000,
+    "onTimePct": 0.93,
+    "delayMinutes": 41,
+    "slaRiskPct": 0.07
+  },
+  {
+    "id": "BNA-EWR-AIR",
+    "origin": "BNA",
+    "dest": "EWR",
+    "mode": "air",
+    "avgDailyVolume": 405000,
+    "onTimePct": 0.94,
+    "delayMinutes": 32,
+    "slaRiskPct": 0.06
+  },
+  {
+    "id": "EWR-BOS-GROUND",
+    "origin": "EWR",
+    "dest": "BOS",
+    "mode": "ground",
+    "avgDailyVolume": 175000,
+    "onTimePct": 0.97,
+    "delayMinutes": 15,
+    "slaRiskPct": 0.03
+  },
+  {
+    "id": "LAX-OAK-GROUND",
+    "origin": "LAX",
+    "dest": "OAK",
+    "mode": "ground",
+    "avgDailyVolume": 235000,
+    "onTimePct": 0.96,
+    "delayMinutes": 20,
+    "slaRiskPct": 0.04
+  },
+  {
+    "id": "OAK-SEA-AIR",
+    "origin": "OAK",
+    "dest": "SEA",
+    "mode": "air",
+    "avgDailyVolume": 190000,
+    "onTimePct": 0.95,
+    "delayMinutes": 25,
+    "slaRiskPct": 0.05
+  },
+  {
+    "id": "SEA-ANC-AIR",
+    "origin": "SEA",
+    "dest": "ANC",
+    "mode": "air",
+    "avgDailyVolume": 85000,
+    "onTimePct": 0.92,
+    "delayMinutes": 45,
+    "slaRiskPct": 0.08
+  },
+  {
+    "id": "DFW-PHX-AIR",
+    "origin": "DFW",
+    "dest": "PHX",
+    "mode": "air",
+    "avgDailyVolume": 265000,
+    "onTimePct": 0.94,
+    "delayMinutes": 30,
+    "slaRiskPct": 0.06
+  },
+  {
+    "id": "PHX-LAS-GROUND",
+    "origin": "PHX",
+    "dest": "LAS",
+    "mode": "ground",
+    "avgDailyVolume": 145000,
+    "onTimePct": 0.96,
+    "delayMinutes": 18,
+    "slaRiskPct": 0.04
+  },
+  {
+    "id": "ATL-MIA-AIR",
+    "origin": "ATL",
+    "dest": "MIA",
+    "mode": "air",
+    "avgDailyVolume": 275000,
+    "onTimePct": 0.93,
+    "delayMinutes": 38,
+    "slaRiskPct": 0.07
+  },
+  {
+    "id": "ATL-CLT-GROUND",
+    "origin": "ATL",
+    "dest": "CLT",
+    "mode": "ground",
+    "avgDailyVolume": 185000,
+    "onTimePct": 0.97,
+    "delayMinutes": 12,
+    "slaRiskPct": 0.03
+  },
+  {
+    "id": "ORD-MSP-GROUND",
+    "origin": "ORD",
+    "dest": "MSP",
+    "mode": "ground",
+    "avgDailyVolume": 195000,
+    "onTimePct": 0.96,
+    "delayMinutes": 20,
+    "slaRiskPct": 0.04
+  },
+  {
+    "id": "DEN-SLC-AIR",
+    "origin": "DEN",
+    "dest": "SLC",
+    "mode": "air",
+    "avgDailyVolume": 155000,
+    "onTimePct": 0.95,
+    "delayMinutes": 24,
+    "slaRiskPct": 0.05
+  },
+  {
+    "id": "SLC-OAK-AIR",
+    "origin": "SLC",
+    "dest": "OAK",
+    "mode": "air",
+    "avgDailyVolume": 165000,
+    "onTimePct": 0.94,
+    "delayMinutes": 28,
+    "slaRiskPct": 0.06
+  },
+  {
+    "id": "EWR-PHL-GROUND",
+    "origin": "EWR",
+    "dest": "PHL",
+    "mode": "ground",
+    "avgDailyVolume": 210000,
+    "onTimePct": 0.98,
+    "delayMinutes": 8,
+    "slaRiskPct": 0.02
+  },
+  {
+    "id": "PIT-ATL-AIR",
+    "origin": "PIT",
+    "dest": "ATL",
+    "mode": "air",
+    "avgDailyVolume": 320000,
+    "onTimePct": 0.96,
+    "delayMinutes": 18,
+    "slaRiskPct": 0.04
+  },
+  {
+    "id": "PIT-STL-GROUND",
+    "origin": "PIT",
+    "dest": "STL",
+    "mode": "ground",
+    "avgDailyVolume": 295000,
+    "onTimePct": 0.95,
+    "delayMinutes": 22,
+    "slaRiskPct": 0.05
+  },
+  {
+    "id": "PIT-LAX-AIR",
+    "origin": "PIT",
+    "dest": "LAX",
+    "mode": "air",
+    "avgDailyVolume": 350000,
+    "onTimePct": 0.94,
+    "delayMinutes": 28,
+    "slaRiskPct": 0.06
+  },
+  {
+    "id": "ORD-DEN-AIR",
+    "origin": "ORD",
+    "dest": "DEN",
+    "mode": "air",
+    "avgDailyVolume": 245000,
+    "onTimePct": 0.95,
+    "delayMinutes": 23,
+    "slaRiskPct": 0.05
+  },
+  {
+    "id": "LAX-PHX-GROUND",
+    "origin": "LAX",
+    "dest": "PHX",
+    "mode": "ground",
+    "avgDailyVolume": 225000,
+    "onTimePct": 0.95,
+    "delayMinutes": 24,
+    "slaRiskPct": 0.05
+  },
+  {
+    "id": "DFW-ATL-AIR",
+    "origin": "DFW",
+    "dest": "ATL",
+    "mode": "air",
+    "avgDailyVolume": 305000,
+    "onTimePct": 0.93,
+    "delayMinutes": 35,
+    "slaRiskPct": 0.07
+  },
+  {
+    "id": "ATL-EWR-AIR",
+    "origin": "ATL",
+    "dest": "EWR",
+    "mode": "air",
+    "avgDailyVolume": 385000,
+    "onTimePct": 0.94,
+    "delayMinutes": 30,
+    "slaRiskPct": 0.06
+  },
+  {
+    "id": "MIA-ATL-AIR",
+    "origin": "MIA",
+    "dest": "ATL",
+    "mode": "air",
+    "avgDailyVolume": 265000,
+    "onTimePct": 0.94,
+    "delayMinutes": 32,
+    "slaRiskPct": 0.06
+  },
+  {
+    "id": "DEN-PHX-AIR",
+    "origin": "DEN",
+    "dest": "PHX",
+    "mode": "air",
+    "avgDailyVolume": 185000,
+    "onTimePct": 0.96,
+    "delayMinutes": 19,
+    "slaRiskPct": 0.04
+  },
+  {
+    "id": "ORD-EWR-AIR",
+    "origin": "ORD",
+    "dest": "EWR",
+    "mode": "air",
+    "avgDailyVolume": 395000,
+    "onTimePct": 0.93,
+    "delayMinutes": 38,
+    "slaRiskPct": 0.07
+  },
+  {
+    "id": "LAX-DEN-AIR",
+    "origin": "LAX",
+    "dest": "DEN",
+    "mode": "air",
+    "avgDailyVolume": 275000,
+    "onTimePct": 0.94,
+    "delayMinutes": 30,
+    "slaRiskPct": 0.06
+  },
+  {
+    "id": "SEA-ORD-AIR",
+    "origin": "SEA",
+    "dest": "ORD",
+    "mode": "air",
+    "avgDailyVolume": 285000,
+    "onTimePct": 0.93,
+    "delayMinutes": 36,
+    "slaRiskPct": 0.07
+  },
+  {
+    "id": "BOS-EWR-GROUND",
+    "origin": "BOS",
+    "dest": "EWR",
+    "mode": "ground",
+    "avgDailyVolume": 165000,
+    "onTimePct": 0.97,
+    "delayMinutes": 14,
+    "slaRiskPct": 0.03
+  }
+]
