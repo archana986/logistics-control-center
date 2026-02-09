@@ -65,14 +65,6 @@ resources:
             - task_key: create_tables
           timeout_seconds: 600
 
-        - task_key: setup_lakebase
-          description: "Create Lakebase Autoscaling Postgres instance"
-          notebook_task:
-            notebook_path: databricks/notebooks/setup_lakebase.py
-          depends_on:
-            - task_key: create_tables
-          timeout_seconds: 600
-
       max_concurrent_runs: 2
       timeout_seconds: 2400
 
@@ -90,3 +82,26 @@ resources:
         quartz_cron_expression: "*/30 * * * * ?"  # Every 30 seconds
         timezone_id: "UTC"
       timeout_seconds: 0
+
+  # Lakebase Autoscaling Postgres (commented out - uncomment to deploy)
+  # Reference: https://docs.databricks.com/aws/en/dev-tools/bundles/resources#postgres_project
+  # postgres_projects:
+  #   logistics_demo:
+  #     project_id: logistics-demo
+  #     display_name: "Logistics Control Center Demo - Lakebase Postgres Database"
+  #     pg_version: 17
+  #
+  # postgres_branches:
+  #   main:
+  #     parent: ${resources.postgres_projects.logistics_demo.id}
+  #     branch_id: main
+  #     is_protected: false
+  #     no_expiry: true
+  #
+  # postgres_endpoints:
+  #   primary:
+  #     parent: ${resources.postgres_branches.main.id}
+  #     endpoint_id: primary
+  #     endpoint_type: ENDPOINT_TYPE_READ_WRITE
+  #     autoscaling_limit_min_cu: 0.5
+  #     autoscaling_limit_max_cu: 2.0
