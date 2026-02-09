@@ -73,12 +73,11 @@ ${primary.impactThroughputPct ? `- Throughput impact: **${primary.impactThroughp
 ${otherSummary}
 
 ---
-*Querying Knowledge Assistant for deeper analysis...*`;
+*Ask a follow-up question below to query Knowledge Assistant for deeper analysis.*`;
 }
 
 export default function RootCauseAnalysis({ incidents, triggerAnalysis = false, laneId }: RootCauseAnalysisProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [isSendingChat, setIsSendingChat] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -91,7 +90,7 @@ export default function RootCauseAnalysis({ incidents, triggerAnalysis = false, 
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Function to send chat message to backend
+  // Function to send chat message to Knowledge Assistant backend
   const sendChatMessage = async () => {
     if (!chatInput.trim() || isSendingChat) return;
 
@@ -103,11 +102,17 @@ export default function RootCauseAnalysis({ incidents, triggerAnalysis = false, 
     setMessages(prev => [...prev, { role: "user", content: userMessage }]);
 
     try {
-      const response = await fetch(`${BACKEND_URL}/chat`, {
+      // Build context-aware question for Knowledge Assistant
+      const incidentRef = primaryIncident?.ref || "Unknown";
+      const incidentType = (primaryIncident?.type || "").replace(/_/g, ' ');
+      const contextQuestion = `Incident ${incidentRef} on lane ${laneId || 'unknown'}. This is a ${incidentType} with cause: ${primaryIncident?.cause || 'unknown'}. Impact is ${primaryIncident?.impactMinutes || 0} minutes delay. `;
+      const fullQuestion = contextQuestion + userMessage;
+
+      const response = await fetch(`${BACKEND_URL}/knowledge/query`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: userMessage,
+          question: fullQuestion,
           context: {
             incident: primaryIncident,
             lane: { id: laneId }
@@ -118,16 +123,22 @@ export default function RootCauseAnalysis({ incidents, triggerAnalysis = false, 
       if (!response.ok) throw new Error(`API error: ${response.status}`);
 
       const data = await response.json();
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        content: data.message,
-        source: data.source
-      }]);
+      
+      // Handle Knowledge Assistant response
+      if (data.source !== "error" && data.answer && !data.answer.startsWith("Error") && !data.answer.startsWith("Knowledge Assistant")) {
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: data.answer,
+          source: data.source || "knowledge_assistant"
+        }]);
+      } else {
+        throw new Error(data.answer || "Failed to get response from Knowledge Assistant");
+      }
     } catch (error) {
-      console.error("Error sending chat message:", error);
+      console.error("Error querying Knowledge Assistant:", error);
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: "I'm having trouble connecting right now. Please try again in a moment.",
+        content: "I'm having trouble connecting to Knowledge Assistant right now. Please try again in a moment.",
         source: "error"
       }]);
     } finally {
@@ -148,17 +159,16 @@ export default function RootCauseAnalysis({ incidents, triggerAnalysis = false, 
   useEffect(() => {
     if (!triggerAnalysis || incidents.length === 0) return;
 
-    setIsAnalyzing(true);
     setMessages([]);
 
-    // Step 1: Show system init message
+    // Show system init message
     setMessages([{
       role: "system",
       content: "Initiating automated root cause analysis...",
       source: "system"
     }]);
 
-    // Step 2: Show boilerplate analysis immediately
+    // Show boilerplate analysis immediately (no API call)
     const boilerplate = buildBoilerplateAnalysis(incidents, laneId || "unknown");
     setTimeout(() => {
       setMessages(prev => [
@@ -170,45 +180,6 @@ export default function RootCauseAnalysis({ incidents, triggerAnalysis = false, 
         }
       ]);
     }, 600);
-
-    // Step 3: Call Knowledge Assistant for deeper analysis
-    const incidentRef = primaryIncident?.ref || "Unknown";
-    const incidentType = (primaryIncident?.type || "").replace(/_/g, ' ');
-    const question = `Analyze incident ${incidentRef} on lane ${laneId || 'unknown'}. This is a ${incidentType} with cause: ${primaryIncident?.cause || 'unknown'}. Impact is ${primaryIncident?.impactMinutes || 0} minutes delay. Check maintenance history, similar past incidents, and provide root cause analysis with recommended actions.`;
-
-    fetch(`${BACKEND_URL}/knowledge/query`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        question,
-        context: {
-          incident: primaryIncident,
-          lane: { id: laneId }
-        }
-      }),
-    })
-      .then(res => {
-        if (!res.ok) throw new Error(`API error: ${res.status}`);
-        return res.json();
-      })
-      .then((result) => {
-        if (result.source !== "error" && result.answer && !result.answer.startsWith("Error") && !result.answer.startsWith("Knowledge Assistant")) {
-          setMessages(prev => [
-            ...prev,
-            {
-              role: "assistant",
-              content: `## Knowledge Assistant Analysis\n\n${result.answer}`,
-              source: result.source
-            }
-          ]);
-        }
-        setIsAnalyzing(false);
-      })
-      .catch((error) => {
-        console.error("Error querying Knowledge Assistant:", error);
-        // Boilerplate is already shown, so just mark as complete
-        setIsAnalyzing(false);
-      });
   }, [triggerAnalysis, incidentsKey, laneId]);
 
   // Don't show anything if analysis hasn't been triggered yet
@@ -237,12 +208,6 @@ export default function RootCauseAnalysis({ incidents, triggerAnalysis = false, 
         <div className="flex items-center gap-2">
           <Brain className="h-5 w-5 text-white" />
           <span className="font-semibold text-white">AirOps AI Root Cause Analysis</span>
-          {isAnalyzing && (
-            <div className="ml-auto flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
-              <span className="text-xs text-white/90">Analyzing...</span>
-            </div>
-          )}
         </div>
       </div>
 
@@ -373,27 +338,16 @@ export default function RootCauseAnalysis({ incidents, triggerAnalysis = false, 
           <div className="bg-background border rounded-lg p-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>AI is thinking...</span>
+              <span>Querying Knowledge Assistant...</span>
             </div>
           </div>
         )}
 
         <div ref={chatEndRef} />
-
-        {isAnalyzing && messages.length > 0 && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <div className="flex gap-1">
-              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }}></div>
-              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }}></div>
-              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }}></div>
-            </div>
-            <span>Querying Knowledge Assistant...</span>
-          </div>
-        )}
       </div>
 
       {/* Footer */}
-      {!isAnalyzing && messages.length > 0 && (
+      {messages.some(m => m.role === "assistant") && (
         <>
           <div className="border-t bg-muted/30 px-4 py-2">
             <div className="flex items-center justify-between text-xs text-muted-foreground">

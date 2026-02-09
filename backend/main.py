@@ -2,7 +2,7 @@ import os
 import json
 from typing import Optional
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -1027,10 +1027,11 @@ if dist_path.exists():
     # Serve other static files (favicon, etc)
     @app.get("/vite.svg")
     @app.get("/tab_logo.png")
-    async def serve_static_file(request):
+    async def serve_static_file(request: Request):
         from fastapi.responses import FileResponse
-        file_path = dist_path / request.url.path.lstrip('/')
-        if file_path.exists():
+        filename = request.url.path.lstrip('/')
+        file_path = dist_path / filename
+        if file_path.exists() and file_path.is_file():
             return FileResponse(file_path)
         raise HTTPException(status_code=404, detail="File not found")
     

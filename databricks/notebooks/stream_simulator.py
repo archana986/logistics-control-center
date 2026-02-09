@@ -94,13 +94,21 @@ if shipments_df.count() > 0:
 
 # MAGIC %md
 # MAGIC ## Generate New Incidents
+# MAGIC
+# MAGIC Note: We exclude key narrative lanes (BNA-STL-AIR, BNA-STL-GROUND) from new incident generation
+# MAGIC to preserve the curated demo story. New incidents can be created on other lanes for realism.
 
 # COMMAND ----------
 
-# 30% chance to generate a new incident
+# 30% chance to generate a new incident (but not on narrative lanes)
 if random.random() < 0.3:
+    # Exclude narrative lanes to preserve demo story
+    narrative_lanes = ["BNA-STL-AIR", "BNA-STL-GROUND"]
+    narrative_lanes_str = "', '".join(narrative_lanes)
+    
     lanes_df = spark.sql(f"""
         SELECT DISTINCT id FROM {TABLE_NAMES['lanes']}
+        WHERE id NOT IN ('{narrative_lanes_str}')
         ORDER BY RANDOM()
         LIMIT 5
     """)
@@ -177,13 +185,20 @@ if resolved > 0:
 
 # MAGIC %md
 # MAGIC ## Drift Lane Metrics
+# MAGIC
+# MAGIC Note: Narrative lanes (BNA-STL-AIR, BNA-STL-GROUND) are excluded from metric drift
+# MAGIC to preserve the curated demo story. Other lanes can drift for realism.
 
 # COMMAND ----------
 
-# Apply small random changes to lane metrics
+# Apply small random changes to lane metrics (excluding narrative lanes)
+narrative_lanes = ["BNA-STL-AIR", "BNA-STL-GROUND"]
+narrative_lanes_str = "', '".join(narrative_lanes)
+
 lanes_df = spark.sql(f"""
     SELECT id, delayMinutes, onTimePct, slaRiskPct, avgDailyVolume
     FROM {TABLE_NAMES['lanes']}
+    WHERE id NOT IN ('{narrative_lanes_str}')
     ORDER BY RANDOM()
     LIMIT 10
 """)

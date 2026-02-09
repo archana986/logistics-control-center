@@ -27,6 +27,7 @@ export default function IncidentResponseView() {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [triggerAnalysis, setTriggerAnalysis] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [loadingIncidents, setLoadingIncidents] = useState(false);
 
   // Keyboard shortcut for demo reset (Cmd+Shift+R or Ctrl+Shift+R)
   useEffect(() => {
@@ -129,12 +130,16 @@ export default function IncidentResponseView() {
   // Load incidents when lane is selected
   useEffect(() => {
     if (selectedLaneId) {
-      getIncidents(selectedLaneId).then(setIncidents);
+      setLoadingIncidents(true);
+      getIncidents(selectedLaneId)
+        .then(setIncidents)
+        .finally(() => setLoadingIncidents(false));
       const lane = filteredLanes.find(l => l.id === selectedLaneId) as Lane;
       setSelectedLane(lane || null);
     } else {
       setIncidents([]);
       setSelectedLane(null);
+      setLoadingIncidents(false);
     }
     setTriggerAnalysis(false);
   }, [selectedLaneId, filteredLanes]);
@@ -282,7 +287,7 @@ export default function IncidentResponseView() {
           <div className="flex-1 overflow-y-auto p-4">
             {selectedLane ? (
               <div className="space-y-4">
-                <LaneDetails lane={selectedLane} incidents={incidents} shipments={shipments} triggerAnalysis={triggerAnalysis} />
+                <LaneDetails lane={selectedLane} incidents={incidents} shipments={shipments} triggerAnalysis={triggerAnalysis} loadingIncidents={loadingIncidents} />
                 
                 {/* Action Buttons */}
                 <div className="space-y-2">

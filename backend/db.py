@@ -121,7 +121,11 @@ class LogisticsDB:
         result = self._execute_query(sql)
         if result is not None:
             return result
-        return self._load_fallback_json("incidents.json")
+        # Fallback with filtering
+        fallback = self._load_fallback_json("incidents.json")
+        if lane_id:
+            return [i for i in fallback if i.get("laneId") == lane_id]
+        return fallback
     
     def get_shipments(self, lane_id: Optional[str] = None, priority: Optional[str] = None) -> list[dict]:
         """Get shipments, optionally filtered by lane and/or priority."""
@@ -142,7 +146,13 @@ class LogisticsDB:
         result = self._execute_query(sql)
         if result is not None:
             return result
-        return self._load_fallback_json("shipments.json")
+        # Fallback with filtering
+        fallback = self._load_fallback_json("shipments.json")
+        if lane_id:
+            fallback = [s for s in fallback if s.get("laneId") == lane_id]
+        if priority:
+            fallback = [s for s in fallback if s.get("priority") == priority]
+        return fallback
     
     def get_reroute_suggestions(self, lane_id: str) -> list[dict]:
         """Get reroute suggestions for a lane."""
@@ -183,7 +193,11 @@ class LogisticsDB:
                 interactions = self.get_customer_interactions(customer_id)
                 customer["recentInteractions"] = interactions[:5]  # Last 5 interactions
             return result
-        return self._load_fallback_json("customers.json")
+        # Fallback with filtering
+        fallback = self._load_fallback_json("customers.json")
+        if ids:
+            return [c for c in fallback if c.get("id") in ids]
+        return fallback
     
     def get_customer_interactions(self, customer_id: str) -> list[dict]:
         """Get customer interactions for a customer."""
@@ -255,7 +269,11 @@ class LogisticsDB:
                     except:
                         activity["metadata"] = {}
             return result
-        return self._load_fallback_json("agent_activities.json")
+        # Fallback with filtering
+        fallback = self._load_fallback_json("agent_activities.json")
+        if lane_id:
+            return [a for a in fallback if a.get("laneId") == lane_id]
+        return fallback
     
     def get_sales_opportunities(self, lane_id: str, activity_id: str) -> Optional[dict]:
         """Get sales opportunity for a lane and activity."""

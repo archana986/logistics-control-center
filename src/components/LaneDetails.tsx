@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Package, Clock, MapPin, AlertCircle, TrendingUp, BoxIcon } from "lucide-react";
+import { Package, Clock, MapPin, AlertCircle, TrendingUp, BoxIcon, Loader2 } from "lucide-react";
 import type { Lane, Incident, Shipment } from "@/types/domain";
 import IncidentTimeline from "./IncidentTimeline";
 import RootCauseAnalysis from "./RootCauseAnalysis";
@@ -9,9 +9,10 @@ interface LaneDetailsProps {
   incidents: Incident[];
   shipments?: Shipment[];
   triggerAnalysis?: boolean;
+  loadingIncidents?: boolean;
 }
 
-export default function LaneDetails({ lane, incidents, shipments = [], triggerAnalysis = false }: LaneDetailsProps) {
+export default function LaneDetails({ lane, incidents, shipments = [], triggerAnalysis = false, loadingIncidents = false }: LaneDetailsProps) {
   const laneShipments = useMemo(() => {
     return shipments.filter(s => s.laneId === lane.id);
   }, [shipments, lane.id]);
@@ -101,17 +102,37 @@ export default function LaneDetails({ lane, incidents, shipments = [], triggerAn
             <AlertCircle className="h-3 w-3" />
             <span>Incidents</span>
           </div>
-          <div className="text-2xl font-bold">{incidents.length}</div>
-          {urgentIncidents.length > 0 && (
-            <div className="text-xs text-orange-600 font-medium mt-1">
-              {urgentIncidents.length} high-impact
+          {loadingIncidents ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Loading...</span>
             </div>
+          ) : (
+            <>
+              <div className="text-2xl font-bold">{incidents.length}</div>
+              {urgentIncidents.length > 0 && (
+                <div className="text-xs text-orange-600 font-medium mt-1">
+                  {urgentIncidents.length} high-impact
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
 
       {/* Incidents */}
-      {incidents.length > 0 ? (
+      {loadingIncidents ? (
+        <div className="bg-card border rounded-lg p-4">
+          <h4 className="font-semibold mb-3 flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-orange-600" />
+            Active Incidents
+          </h4>
+          <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-sm">Loading incidents...</span>
+          </div>
+        </div>
+      ) : incidents.length > 0 ? (
         <div>
           <h4 className="font-semibold mb-3 flex items-center gap-2">
             <AlertCircle className="h-4 w-4 text-orange-600" />
