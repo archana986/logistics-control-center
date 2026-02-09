@@ -33,7 +33,7 @@ env:
   - name: DATABRICKS_GENIE_SPACE_ID
     value: "<genie-space-id>"
   - name: DATABRICKS_KA_ENDPOINT
-    value: "<knowledge-assistant-endpoint-name>"
+    value: "ka-3c254141-endpoint"
   - name: DATABRICKS_SUPERVISOR_ENDPOINT
     value: "<supervisor-endpoint-name>"
 

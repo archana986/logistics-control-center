@@ -438,6 +438,8 @@ async def health():
     db = get_logistics_db()
     agents = get_agents_client_instance()
     
+    ka_ep = os.getenv("DATABRICKS_KA_ENDPOINT", "")
+    
     return {
         "status": "ok",
         "service": "Logistics AI Backend",
@@ -445,40 +447,87 @@ async def health():
         "databricks_connected": client is not None,
         "database_connected": db is not None,
         "agents_configured": agents is not None,
+        "agents_ka_endpoint": agents.ka_endpoint if agents else None,
+        "ka_env_var": ka_ep if ka_ep else None,
         "sql_warehouse_id": SQL_WAREHOUSE_ID if SQL_WAREHOUSE_ID else None,
         "auth_mode": "databricks_app" if os.getenv('DATABRICKS_APP_NAME') else "cli"
     }
 
 
-@api_app.post("/chat", response_model=ChatResponse)
-async def chat_with_ai(request: ChatRequest):
-    """Chat with the Multi-Agent Supervisor about incidents and root cause analysis."""
+@api_app.get("/debug/ka-test")
+async def debug_ka_test():
+    """Debug endpoint to test the Knowledge Assistant connection."""
+    ka_ep = os.getenv("DATABRICKS_KA_ENDPOINT", "")
+    result = {"ka_endpoint_env": ka_ep}
     
     try:
-        # Try Multi-Agent Supervisor first
-        agents = get_agents_client_instance()
-        if agents and agents.supervisor_endpoint:
-            try:
-                result = agents.query_supervisor(request.message, request.context)
-                if result.get("source") != "error":
-                    return ChatResponse(
-                        message=result["message"],
-                        source="supervisor"
-                    )
-            except Exception as e:
-                print(f"Supervisor query failed, falling back: {e}")
-        
-        # Fallback to direct model serving
         client = get_databricks_client()
-        if client:
-            # Build context-aware prompt
-            context_prompt = ""
-            if request.context:
-                incident = request.context.get("incident", {})
-                lane = request.context.get("lane", {})
+        if not client:
+            result["error"] = "No Databricks client"
+            return result
+        
+        result["client_ok"] = True
+        
+        # Test via agents client
+        agents = get_agents_client_instance()
+        if agents:
+            result["agents_ka_endpoint"] = agents.ka_endpoint
+            try:
+                ka_result = agents.query_knowledge_assistant("Hello, what information do you have?")
+                result["agents_result_source"] = ka_result.get("source")
+                result["agents_result_preview"] = ka_result.get("answer", "")[:200]
+            except Exception as e:
+                result["agents_error"] = str(e)
+        else:
+            result["agents_error"] = "agents client is None"
+        
+        # Test direct raw HTTP call
+        if ka_ep and not ka_ep.startswith("<"):
+            try:
+                payload = {"input": [{"role": "user", "content": "Hello"}]}
+                resp = client.api_client.do(
+                    "POST",
+                    f"/serving-endpoints/{ka_ep}/invocations",
+                    body=payload,
+                )
+                result["direct_response_type"] = type(resp).__name__
+                result["direct_has_output"] = "output" in resp if isinstance(resp, dict) else False
+                if isinstance(resp, dict) and resp.get("output"):
+                    from backend.agents import _extract_agent_text
+                    answer, _ = _extract_agent_text(resp)
+                    result["direct_answer_preview"] = answer[:200]
+            except Exception as e:
+                result["direct_error"] = str(e)
+    except Exception as e:
+        result["error"] = str(e)
+    
+    return result
+
+
+@api_app.post("/chat", response_model=ChatResponse)
+async def chat_with_ai(request: ChatRequest):
+    """Chat about incidents and root cause analysis, using KA endpoint or model serving."""
+    
+    KA_SERVING_ENDPOINT = os.getenv("DATABRICKS_KA_ENDPOINT", "")
+    
+    try:
+        client = get_databricks_client()
+        
+        # Build context-aware prompt
+        context_prompt = ""
+        if request.context:
+            incident = request.context.get("incident", {})
+            lane = request.context.get("lane", {})
+            
+            if incident:
+                # Safely format confidence
+                raw_conf = incident.get('confidence', 0)
+                try:
+                    conf_str = f"{float(raw_conf) * 100:.0f}%"
+                except (ValueError, TypeError):
+                    conf_str = "N/A"
                 
-                if incident:
-                    context_prompt = f"""You are an AI assistant helping with cargo logistics operations root cause analysis for a package shipping carrier (like Databricks Logistics). This is NOT about passenger airline operations - we transport packages and freight, not people. Our aircraft carry cargo packages between distribution centers.
+                context_prompt = f"""You are an AI assistant helping with cargo logistics operations root cause analysis for a package shipping carrier. We transport packages and freight via aircraft and ground transportation between distribution centers - NOT passengers.
 
 Current Incident Context:
 - Lane: {lane.get('id', 'N/A')}
@@ -486,61 +535,55 @@ Current Incident Context:
 - Reference: {incident.get('ref', 'N/A')}
 - Cause: {incident.get('cause', 'N/A')}
 - Impact: {incident.get('impactMinutes', 'N/A')} minutes
-- Confidence: {incident.get('confidence', 0) * 100:.0f}%
+- Confidence: {conf_str}
 
-Provide helpful, concise, and factual responses about this incident, potential solutions, or related operational questions. Be professional and focus on cargo logistics operations management - remember we're dealing with package shipments, not passenger travel.
-
-User question: {request.message}"""
-                else:
-                    context_prompt = f"""You are an AI assistant helping with cargo logistics operations and root cause analysis for a package shipping carrier (like Databricks Logistics). This is NOT about passenger airline operations - we transport packages and freight, not people.
+Provide helpful, concise, and factual responses about this incident, potential solutions, or related operational questions. Be professional and focus on cargo logistics operations management.
 
 User question: {request.message}"""
             else:
-                context_prompt = request.message
-            
-            # Call the model
+                context_prompt = f"""You are an AI assistant helping with cargo logistics operations and root cause analysis for a package shipping carrier. We transport packages and freight, not people.
+
+User question: {request.message}"""
+        else:
+            context_prompt = request.message
+        
+        # Try Knowledge Assistant endpoint first (preferred for RCA)
+        # KA uses Agent Bricks input/output format, not standard messages/choices
+        if client and KA_SERVING_ENDPOINT and not KA_SERVING_ENDPOINT.startswith("<"):
+            try:
+                payload = {"input": [{"role": "user", "content": context_prompt}]}
+                resp = client.api_client.do(
+                    "POST",
+                    f"/serving-endpoints/{KA_SERVING_ENDPOINT}/invocations",
+                    body=payload,
+                )
+                from backend.agents import _extract_agent_text
+                answer, _ = _extract_agent_text(resp)
+                if answer:
+                    return ChatResponse(message=answer, source="knowledge_assistant")
+            except Exception as e:
+                print(f"KA endpoint query failed, falling back to model: {e}")
+        
+        # Fallback to general model serving endpoint
+        if client:
             response = client.serving_endpoints.query(
                 name=MODEL_ENDPOINT,
                 messages=[
-                    ChatMessage(
-                        role=ChatMessageRole.USER,
-                        content=context_prompt
-                    )
+                    ChatMessage(role=ChatMessageRole.USER, content=context_prompt)
                 ],
                 max_tokens=2000,
                 temperature=0.5,
             )
             
-            # Extract the response text
             if response.choices and len(response.choices) > 0:
                 message_content = response.choices[0].message.content
-                
-                # Handle structured content (list of content blocks)
-                if isinstance(message_content, list):
-                    # Extract text from content blocks
-                    text_parts = []
-                    for block in message_content:
-                        if isinstance(block, dict):
-                            if block.get('type') == 'text' and 'text' in block:
-                                text_parts.append(block['text'])
-                            elif 'text' in block:
-                                text_parts.append(block['text'])
-                    message_text = '\n'.join(text_parts) if text_parts else str(message_content)
-                else:
-                    # Simple string content
-                    message_text = message_content
-                
-                return ChatResponse(
-                    message=message_text,
-                    source="databricks"
-                )
+                message_text = _extract_text_from_response(message_content)
+                return ChatResponse(message=message_text, source="databricks")
             else:
                 raise Exception("No response from model")
-                
         else:
-            # Fallback response
             return ChatResponse(
-                message="I'm currently unable to access the AI model. However, I can tell you that for most operational issues, it's important to review historical data, check for patterns, and consider both immediate fixes and long-term preventive measures.",
+                message="I'm currently unable to access the AI model. However, for most operational issues, review historical data, check for patterns, and consider both immediate fixes and long-term preventive measures.",
                 source="fallback"
             )
     
@@ -550,6 +593,20 @@ User question: {request.message}"""
             message="I'm having trouble processing your request right now. Please try rephrasing your question or check back shortly.",
             source="fallback"
         )
+
+
+def _extract_text_from_response(message_content) -> str:
+    """Extract text from model response content (handles string and list-of-blocks formats)."""
+    if isinstance(message_content, list):
+        text_parts = []
+        for block in message_content:
+            if isinstance(block, dict):
+                if block.get('type') == 'text' and 'text' in block:
+                    text_parts.append(block['text'])
+                elif 'text' in block:
+                    text_parts.append(block['text'])
+        return '\n'.join(text_parts) if text_parts else str(message_content)
+    return str(message_content)
 
 
 @api_app.get("/centers")
@@ -826,18 +883,50 @@ async def query_genie(request: GenieQueryRequest):
 
 @api_app.post("/knowledge/query", response_model=KnowledgeQueryResponse)
 async def query_knowledge(request: KnowledgeQueryRequest):
-    """Query unstructured docs via Knowledge Assistant"""
+    """Query unstructured docs via Knowledge Assistant endpoint."""
+    
+    KA_SERVING_ENDPOINT = os.getenv("DATABRICKS_KA_ENDPOINT", "")
+    
+    # Try the agents client first (if configured)
     agents = get_agents_client_instance()
-    if agents:
+    if agents and agents.ka_endpoint:
         try:
             result = agents.query_knowledge_assistant(request.question, request.context)
-            return KnowledgeQueryResponse(**result)
+            if result.get("source") != "error":
+                return KnowledgeQueryResponse(**result)
         except Exception as e:
-            print(f"Error querying Knowledge Assistant: {e}")
-            return KnowledgeQueryResponse(
-                answer=f"Error querying Knowledge Assistant: {str(e)}",
-                source="error"
-            )
+            print(f"Error querying via agents client: {e}")
+    
+    # Direct fallback: call the KA serving endpoint via raw HTTP (Agent Bricks input format)
+    if KA_SERVING_ENDPOINT and not KA_SERVING_ENDPOINT.startswith("<"):
+        client = get_databricks_client()
+        if client:
+            try:
+                prompt = request.question
+                if request.context:
+                    context_str = "\n".join([
+                        f"{k}: {json.dumps(v) if isinstance(v, (dict, list)) else v}"
+                        for k, v in request.context.items()
+                    ])
+                    prompt = f"Context:\n{context_str}\n\nQuestion: {request.question}"
+
+                payload = {"input": [{"role": "user", "content": prompt}]}
+                resp = client.api_client.do(
+                    "POST",
+                    f"/serving-endpoints/{KA_SERVING_ENDPOINT}/invocations",
+                    body=payload,
+                )
+
+                from backend.agents import _extract_agent_text
+                answer, citations = _extract_agent_text(resp)
+                if answer:
+                    return KnowledgeQueryResponse(
+                        answer=answer,
+                        citations=citations,
+                        source="knowledge_assistant"
+                    )
+            except Exception as e:
+                print(f"Error calling KA endpoint directly: {e}")
     
     return KnowledgeQueryResponse(
         answer="Knowledge Assistant not configured",

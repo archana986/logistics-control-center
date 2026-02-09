@@ -18,6 +18,27 @@ class LogisticsDB:
         self._fallback_enabled = True
         self._project_root = Path(__file__).parent.parent
     
+    @staticmethod
+    def _parse_value(val: str, type_name: str):
+        """Parse a string value from SQL warehouse into the correct Python type."""
+        if val is None:
+            return None
+        type_upper = (type_name or "").upper()
+        if type_upper in ("INT", "INTEGER", "BIGINT", "SMALLINT", "TINYINT", "LONG"):
+            try:
+                return int(val)
+            except (ValueError, TypeError):
+                return val
+        elif type_upper in ("DOUBLE", "FLOAT", "DECIMAL"):
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return val
+        elif type_upper == "BOOLEAN":
+            return str(val).lower() in ("true", "1", "yes")
+        # STRING, TIMESTAMP, DATE, ARRAY, STRUCT, MAP — return as-is
+        return val
+
     def _execute_query(self, sql: str) -> Optional[list]:
         """Execute SQL query and return results as list of dicts."""
         try:
@@ -29,18 +50,16 @@ class LogisticsDB:
             
             if execution.status.state == StatementState.SUCCEEDED:
                 if execution.result and execution.result.data_array:
-                    # Convert result to list of dicts
-                    columns = [col.name for col in execution.result.manifest.schema.columns]
+                    # Convert result to list of dicts with proper type parsing
+                    columns = execution.result.manifest.schema.columns
+                    col_names = [col.name for col in columns]
+                    col_types = [getattr(col, 'type_name', 'STRING') or 'STRING' for col in columns]
                     results = []
                     for row in execution.result.data_array:
                         result_dict = {}
-                        for i, col in enumerate(columns):
-                            val = row[i]
-                            # Handle timestamp strings
-                            if isinstance(val, str) and ('T' in val or ' ' in val):
-                                result_dict[col] = val
-                            else:
-                                result_dict[col] = val
+                        for i, col_name in enumerate(col_names):
+                            val = row[i] if i < len(row) else None
+                            result_dict[col_name] = self._parse_value(val, col_types[i])
                         results.append(result_dict)
                     return results
                 return []

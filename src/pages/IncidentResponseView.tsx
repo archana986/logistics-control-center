@@ -282,7 +282,7 @@ export default function IncidentResponseView() {
           <div className="flex-1 overflow-y-auto p-4">
             {selectedLane ? (
               <div className="space-y-4">
-                <LaneDetails lane={selectedLane} incidents={incidents} triggerAnalysis={triggerAnalysis} />
+                <LaneDetails lane={selectedLane} incidents={incidents} shipments={shipments} triggerAnalysis={triggerAnalysis} />
                 
                 {/* Action Buttons */}
                 <div className="space-y-2">
@@ -297,7 +297,7 @@ export default function IncidentResponseView() {
                   </Button>
                   
                   {/* AI Root Cause Analysis Button */}
-                  {incidents.length > 0 && !triggerAnalysis && selectedLane.mode === "air" && (
+                  {incidents.length > 0 && !triggerAnalysis && (
                     <Button
                       className="w-full"
                       variant="outline"

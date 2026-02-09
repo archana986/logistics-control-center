@@ -1,5 +1,13 @@
-"""Agent Bricks client for Genie, Knowledge Assistant, and Multi-Agent Supervisor."""
+"""Agent Bricks client for Genie, Knowledge Assistant, and Multi-Agent Supervisor.
 
+Knowledge Assistant (KA) and other Agent Bricks endpoints use the
+``input``/``output`` wire format rather than the standard ``messages``/``choices``
+format used by foundation-model serving endpoints.  The helpers here call
+the endpoint through the SDK's low-level HTTP API so the payload can be
+customised.
+"""
+
+import json
 import os
 from typing import Optional, Dict, Any
 
@@ -7,191 +15,167 @@ from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.serving import ChatMessage, ChatMessageRole
 
 
+def _extract_agent_text(response_json: dict) -> tuple[str, list]:
+    """Extract answer text and citations from an Agent Bricks response.
+
+    Agent Bricks responses have the shape::
+
+        {
+            "output": [
+                {
+                    "type": "message",
+                    "content": [
+                        {"type": "output_text", "text": "..."},
+                        ...
+                    ]
+                }
+            ]
+        }
+    """
+    text_parts: list[str] = []
+    citations: list[str] = []
+
+    for output_item in response_json.get("output", []):
+        for content_block in output_item.get("content", []):
+            if isinstance(content_block, dict):
+                text = content_block.get("text", "")
+                if text:
+                    text_parts.append(text)
+                for ann in content_block.get("annotations", []):
+                    if isinstance(ann, dict) and ann.get("url"):
+                        citations.append(ann["url"])
+
+    return "\n".join(text_parts), citations
+
+
 class AgentsClient:
     """Interface to Agent Bricks services."""
-    
+
     def __init__(self, client: WorkspaceClient, config: Dict[str, str]):
         self.client = client
         self.genie_space_id = config.get("genie_space_id")
         self.ka_endpoint = config.get("knowledge_assistant_endpoint")
         self.supervisor_endpoint = config.get("supervisor_endpoint")
-    
-    def query_genie(self, question: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Query structured data via Genie space.
-        
-        Uses the Genie Conversations API to submit natural language questions
-        and get SQL queries + results.
+
+    # ------------------------------------------------------------------
+    # Low-level helper: call an Agent Bricks endpoint via raw HTTP
+    # ------------------------------------------------------------------
+    def _call_agent_endpoint(self, endpoint_name: str, prompt: str) -> dict:
+        """Call an Agent Bricks serving endpoint that uses the ``input`` format.
+
+        Returns the raw JSON response dict.
         """
+        payload = {
+            "input": [{"role": "user", "content": prompt}]
+        }
+
+        # Use the SDK's internal API client to make an authenticated POST
+        api_client = self.client.api_client
+        resp = api_client.do(
+            "POST",
+            f"/serving-endpoints/{endpoint_name}/invocations",
+            body=payload,
+        )
+        # resp is already a dict parsed from JSON
+        return resp
+
+    # ------------------------------------------------------------------
+    # Genie
+    # ------------------------------------------------------------------
+    def query_genie(self, question: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Query structured data via Genie space."""
         if not self.genie_space_id:
-            return {
-                "answer": "Genie space not configured",
-                "sql": None,
-                "data": [],
-                "source": "error"
-            }
-        
+            return {"answer": "Genie space not configured", "sql": None, "data": [], "source": "error"}
+
         try:
-            # Use Genie Conversations API
-            # Note: This is a simplified implementation - actual Genie API may differ
-            # Genie spaces are queried via SQL Warehouse with NL-to-SQL conversion
-            
-            # For now, return a placeholder response
-            # In production, this would use the actual Genie Conversations API
-            # which is typically accessed via SQL Warehouse with special NL query syntax
-            
             return {
                 "answer": f"Genie query for: {question}",
                 "sql": f"-- Generated SQL for: {question}",
                 "data": [],
                 "source": "genie",
-                "note": "Genie integration requires Genie Conversations API access"
+                "note": "Genie integration requires Genie Conversations API access",
             }
         except Exception as e:
-            return {
-                "answer": f"Error querying Genie: {str(e)}",
-                "sql": None,
-                "data": [],
-                "source": "error"
-            }
-    
+            return {"answer": f"Error querying Genie: {str(e)}", "sql": None, "data": [], "source": "error"}
+
+    # ------------------------------------------------------------------
+    # Knowledge Assistant
+    # ------------------------------------------------------------------
     def query_knowledge_assistant(self, question: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Query unstructured docs via Knowledge Assistant endpoint."""
+        """Query unstructured docs via Knowledge Assistant endpoint.
+
+        Uses the Agent Bricks ``input``/``output`` wire format.
+        """
         if not self.ka_endpoint:
-            return {
-                "answer": "Knowledge Assistant endpoint not configured",
-                "citations": [],
-                "source": "error"
-            }
-        
+            return {"answer": "Knowledge Assistant endpoint not configured", "citations": [], "source": "error"}
+
         try:
             # Build prompt with context
             prompt = question
             if context:
-                context_str = "\n".join([f"{k}: {v}" for k, v in context.items()])
-                prompt = f"Context:\n{context_str}\n\nQuestion: {question}"
-            
-            # Query Knowledge Assistant endpoint
-            response = self.client.serving_endpoints.query(
-                name=self.ka_endpoint,
-                messages=[
-                    ChatMessage(
-                        role=ChatMessageRole.USER,
-                        content=prompt
-                    )
-                ],
-                max_tokens=2000,
-                temperature=0.3,
-            )
-            
-            # Extract response
-            if response.choices and len(response.choices) > 0:
-                message_content = response.choices[0].message.content
-                
-                # Handle structured content
-                if isinstance(message_content, list):
-                    text_parts = []
-                    citations = []
-                    for block in message_content:
-                        if isinstance(block, dict):
-                            if block.get('type') == 'text' and 'text' in block:
-                                text_parts.append(block['text'])
-                            elif 'text' in block:
-                                text_parts.append(block['text'])
-                            # Extract citations if present
-                            if 'citations' in block:
-                                citations.extend(block['citations'])
-                    answer = '\n'.join(text_parts) if text_parts else str(message_content)
-                else:
-                    answer = message_content
-                
-                return {
-                    "answer": answer,
-                    "citations": citations if 'citations' in locals() else [],
-                    "source": "knowledge_assistant"
-                }
+                context_parts = []
+                for k, v in context.items():
+                    context_parts.append(f"{k}: {json.dumps(v) if isinstance(v, (dict, list)) else v}")
+                prompt = f"Context:\n" + "\n".join(context_parts) + f"\n\nQuestion: {question}"
+
+            resp = self._call_agent_endpoint(self.ka_endpoint, prompt)
+            answer, citations = _extract_agent_text(resp)
+
+            if answer:
+                return {"answer": answer, "citations": citations, "source": "knowledge_assistant"}
             else:
-                return {
-                    "answer": "No response from Knowledge Assistant",
-                    "citations": [],
-                    "source": "error"
-                }
+                return {"answer": "No response from Knowledge Assistant", "citations": [], "source": "error"}
         except Exception as e:
-            return {
-                "answer": f"Error querying Knowledge Assistant: {str(e)}",
-                "citations": [],
-                "source": "error"
-            }
-    
+            return {"answer": f"Error querying Knowledge Assistant: {str(e)}", "citations": [], "source": "error"}
+
+    # ------------------------------------------------------------------
+    # Multi-Agent Supervisor
+    # ------------------------------------------------------------------
     def query_supervisor(self, message: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Route complex queries through Multi-Agent Supervisor."""
         if not self.supervisor_endpoint:
-            return {
-                "message": "Multi-Agent Supervisor endpoint not configured",
-                "source": "error"
-            }
-        
+            return {"message": "Multi-Agent Supervisor endpoint not configured", "source": "error"}
+
         try:
-            # Build context-aware prompt
             prompt = message
             if context:
                 context_parts = []
                 if context.get("incident"):
-                    incident = context["incident"]
-                    context_parts.append(f"Incident: {incident.get('ref', 'N/A')} on lane {incident.get('laneId', 'N/A')}")
-                    context_parts.append(f"Type: {incident.get('type', 'N/A')}")
-                    context_parts.append(f"Cause: {incident.get('cause', 'N/A')}")
-                
+                    inc = context["incident"]
+                    context_parts.append(f"Incident: {inc.get('ref', 'N/A')} on lane {inc.get('laneId', 'N/A')}")
+                    context_parts.append(f"Type: {inc.get('type', 'N/A')}")
+                    context_parts.append(f"Cause: {inc.get('cause', 'N/A')}")
                 if context.get("lane"):
-                    lane = context["lane"]
-                    context_parts.append(f"Lane: {lane.get('id', 'N/A')}")
-                
+                    context_parts.append(f"Lane: {context['lane'].get('id', 'N/A')}")
                 if context_parts:
-                    prompt = f"Context:\n" + "\n".join(context_parts) + f"\n\nUser question: {message}"
-            
-            # Query Supervisor endpoint
+                    prompt = "Context:\n" + "\n".join(context_parts) + f"\n\nUser question: {message}"
+
+            # Try Agent Bricks format first
+            try:
+                resp = self._call_agent_endpoint(self.supervisor_endpoint, prompt)
+                answer, _ = _extract_agent_text(resp)
+                if answer:
+                    return {"message": answer, "source": "supervisor"}
+            except Exception:
+                pass
+
+            # Fallback: standard chat completion format
             response = self.client.serving_endpoints.query(
                 name=self.supervisor_endpoint,
-                messages=[
-                    ChatMessage(
-                        role=ChatMessageRole.USER,
-                        content=prompt
-                    )
-                ],
+                messages=[ChatMessage(role=ChatMessageRole.USER, content=prompt)],
                 max_tokens=2000,
                 temperature=0.5,
             )
-            
-            # Extract response
             if response.choices and len(response.choices) > 0:
-                message_content = response.choices[0].message.content
-                
-                # Handle structured content
-                if isinstance(message_content, list):
-                    text_parts = []
-                    for block in message_content:
-                        if isinstance(block, dict):
-                            if block.get('type') == 'text' and 'text' in block:
-                                text_parts.append(block['text'])
-                            elif 'text' in block:
-                                text_parts.append(block['text'])
-                    message_text = '\n'.join(text_parts) if text_parts else str(message_content)
-                else:
-                    message_text = message_content
-                
-                return {
-                    "message": message_text,
-                    "source": "supervisor"
-                }
-            else:
-                return {
-                    "message": "No response from Multi-Agent Supervisor",
-                    "source": "error"
-                }
+                mc = response.choices[0].message.content
+                if isinstance(mc, list):
+                    text_parts = [b.get("text", "") for b in mc if isinstance(b, dict) and b.get("text")]
+                    return {"message": "\n".join(text_parts), "source": "supervisor"}
+                return {"message": str(mc), "source": "supervisor"}
+
+            return {"message": "No response from Multi-Agent Supervisor", "source": "error"}
         except Exception as e:
-            return {
-                "message": f"Error querying Multi-Agent Supervisor: {str(e)}",
-                "source": "error"
-            }
+            return {"message": f"Error querying Multi-Agent Supervisor: {str(e)}", "source": "error"}
 
 
 def get_agents_client(client: Optional[WorkspaceClient] = None) -> Optional[AgentsClient]:
@@ -199,14 +183,14 @@ def get_agents_client(client: Optional[WorkspaceClient] = None) -> Optional[Agen
     if client is None:
         from backend.main import get_databricks_client
         client = get_databricks_client()
-    
+
     if client is None:
         return None
-    
+
     config = {
         "genie_space_id": os.getenv("DATABRICKS_GENIE_SPACE_ID"),
         "knowledge_assistant_endpoint": os.getenv("DATABRICKS_KA_ENDPOINT"),
         "supervisor_endpoint": os.getenv("DATABRICKS_SUPERVISOR_ENDPOINT"),
     }
-    
+
     return AgentsClient(client, config)

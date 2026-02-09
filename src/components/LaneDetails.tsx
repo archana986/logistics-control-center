@@ -1,18 +1,26 @@
 import { useMemo } from "react";
-import { Package, Clock, MapPin, AlertCircle, TrendingUp } from "lucide-react";
-import type { Lane, Incident } from "@/types/domain";
+import { Package, Clock, MapPin, AlertCircle, TrendingUp, BoxIcon } from "lucide-react";
+import type { Lane, Incident, Shipment } from "@/types/domain";
 import IncidentTimeline from "./IncidentTimeline";
 import RootCauseAnalysis from "./RootCauseAnalysis";
 
 interface LaneDetailsProps {
   lane: Lane;
   incidents: Incident[];
+  shipments?: Shipment[];
   triggerAnalysis?: boolean;
 }
 
-export default function LaneDetails({ lane, incidents, triggerAnalysis = false }: LaneDetailsProps) {
+export default function LaneDetails({ lane, incidents, shipments = [], triggerAnalysis = false }: LaneDetailsProps) {
+  const laneShipments = useMemo(() => {
+    return shipments.filter(s => s.laneId === lane.id);
+  }, [shipments, lane.id]);
+
+  const urgentShipments = useMemo(() => {
+    return laneShipments.filter(s => s.priority === "HIGH");
+  }, [laneShipments]);
+
   const urgentIncidents = useMemo(() => {
-    // Filter incidents with high impact or low confidence (indicating uncertainty/urgency)
     return incidents.filter(i => (i.impactMinutes || 0) > 60 || (i.confidence || 1) < 0.8);
   }, [incidents]);
 
@@ -50,12 +58,25 @@ export default function LaneDetails({ lane, incidents, triggerAnalysis = false }
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-card border rounded-lg p-3">
           <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+            <BoxIcon className="h-3 w-3" />
+            <span>Shipments</span>
+          </div>
+          <div className="text-2xl font-bold">{laneShipments.length}</div>
+          {urgentShipments.length > 0 && (
+            <div className="text-xs text-red-600 font-medium mt-1">
+              {urgentShipments.length} urgent (HIGH)
+            </div>
+          )}
+        </div>
+
+        <div className="bg-card border rounded-lg p-3">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
             <Package className="h-3 w-3" />
             <span>Daily Volume</span>
           </div>
-          <div className="text-2xl font-bold">{lane.avgDailyVolume.toLocaleString()}</div>
+          <div className="text-2xl font-bold">{Number(lane.avgDailyVolume).toLocaleString()}</div>
           <div className="text-xs text-muted-foreground mt-1">
-            {lane.onTimePct.toFixed(0)}% on-time
+            {(Number(lane.onTimePct) * 100).toFixed(0)}% on-time
           </div>
         </div>
 
@@ -64,13 +85,13 @@ export default function LaneDetails({ lane, incidents, triggerAnalysis = false }
             <Clock className="h-3 w-3" />
             <span>Avg Delay</span>
           </div>
-          <div className={`text-2xl font-bold ${getRiskColor(lane.delayMinutes).split(' ')[0]}`}>
+          <div className={`text-2xl font-bold ${getRiskColor(Number(lane.delayMinutes)).split(' ')[0]}`}>
             {lane.delayMinutes}m
           </div>
-          {lane.delayMinutes > 0 && (
+          {Number(lane.delayMinutes) > 0 && (
             <div className="flex items-center gap-1 text-xs text-red-600 mt-1">
               <TrendingUp className="h-3 w-3" />
-              <span>+{Math.round(lane.delayMinutes * 0.2)}m in 1hr</span>
+              <span>+{Math.round(Number(lane.delayMinutes) * 0.2)}m in 1hr</span>
             </div>
           )}
         </div>
@@ -83,19 +104,9 @@ export default function LaneDetails({ lane, incidents, triggerAnalysis = false }
           <div className="text-2xl font-bold">{incidents.length}</div>
           {urgentIncidents.length > 0 && (
             <div className="text-xs text-orange-600 font-medium mt-1">
-              {urgentIncidents.length} urgent
+              {urgentIncidents.length} high-impact
             </div>
           )}
-        </div>
-
-        <div className="bg-card border rounded-lg p-3">
-          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-            <MapPin className="h-3 w-3" />
-            <span>Mode</span>
-          </div>
-          <div className="text-lg font-bold capitalize">
-            {lane.mode === "air" ? "✈️ Air" : lane.mode === "ground" ? "🚛 Ground" : "🚢 Ocean"}
-          </div>
         </div>
       </div>
 
@@ -116,7 +127,7 @@ export default function LaneDetails({ lane, incidents, triggerAnalysis = false }
       )}
 
       {/* Root Cause Analysis */}
-      {triggerAnalysis && lane.mode === "air" && incidents.length > 0 && (
+      {triggerAnalysis && incidents.length > 0 && (
         <RootCauseAnalysis laneId={lane.id} incidents={incidents} triggerAnalysis={triggerAnalysis} />
       )}
     </div>

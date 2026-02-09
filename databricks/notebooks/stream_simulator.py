@@ -75,16 +75,14 @@ if shipments_df.count() > 0:
                 spark.sql(f"""
                     UPDATE {TABLE_NAMES['shipments']}
                     SET status = 'delivered', 
-                        currentETA = current_timestamp(),
-                        updated_at = current_timestamp()
+                        currentETA = current_timestamp()
                     WHERE trackingId = '{tracking_id}'
                 """)
                 delivered += 1
             else:
                 spark.sql(f"""
                     UPDATE {TABLE_NAMES['shipments']}
-                    SET currentETA = CAST('{new_eta.isoformat()}' AS TIMESTAMP),
-                        updated_at = current_timestamp()
+                    SET currentETA = CAST('{new_eta.isoformat()}' AS TIMESTAMP)
                     WHERE trackingId = '{tracking_id}'
                 """)
                 updated += 1
@@ -167,7 +165,7 @@ for row in incidents_df.collect():
         incident_id = row.id
         spark.sql(f"""
             UPDATE {TABLE_NAMES['incidents']}
-            SET active = false, updated_at = current_timestamp()
+            SET active = false
             WHERE id = '{incident_id}'
         """)
         resolved += 1
@@ -209,8 +207,7 @@ for row in lanes_df.take(5):  # Update up to 5 lanes
         SET delayMinutes = {new_delay},
             onTimePct = {new_on_time:.3f},
             slaRiskPct = {new_sla_risk:.3f},
-            avgDailyVolume = {new_volume},
-            updated_at = current_timestamp()
+            avgDailyVolume = {new_volume}
         WHERE id = '{lane_id}'
     """)
     updated += 1
@@ -247,8 +244,7 @@ for row in capacity_df.collect():
     spark.sql(f"""
         UPDATE {TABLE_NAMES['capacity_lanes']}
         SET utilizationPct = {new_util:.3f},
-            availableCapacity = {new_avail},
-            updated_at = current_timestamp()
+            availableCapacity = {new_avail}
         WHERE id = '{lane_id}'
     """)
     updated += 1
