@@ -21,4 +21,19 @@ env:
     value: databricks-gpt-5-1
   - name: VITE_BACKEND_URL
     value: /api
+  # SQL Warehouse ID - set this to your SQL Warehouse ID
+  - name: DATABRICKS_SQL_WAREHOUSE_ID
+    value: "2fe54b32b36329be"
+  # Unity Catalog Configuration
+  - name: DATABRICKS_CATALOG
+    value: demos
+  - name: DATABRICKS_SCHEMA
+    value: logistics_control_center
+  # Agent Bricks Configuration - set these after creating agents
+  - name: DATABRICKS_GENIE_SPACE_ID
+    value: "<genie-space-id>"
+  - name: DATABRICKS_KA_ENDPOINT
+    value: "<knowledge-assistant-endpoint-name>"
+  - name: DATABRICKS_SUPERVISOR_ENDPOINT
+    value: "<supervisor-endpoint-name>"
 

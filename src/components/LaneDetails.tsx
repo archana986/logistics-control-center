@@ -12,7 +12,8 @@ interface LaneDetailsProps {
 
 export default function LaneDetails({ lane, incidents, triggerAnalysis = false }: LaneDetailsProps) {
   const urgentIncidents = useMemo(() => {
-    return incidents.filter(i => i.severity === "high" || i.severity === "critical");
+    // Filter incidents with high impact or low confidence (indicating uncertainty/urgency)
+    return incidents.filter(i => (i.impactMinutes || 0) > 60 || (i.confidence || 1) < 0.8);
   }, [incidents]);
 
   const getRiskColor = (delayMinutes: number) => {
@@ -41,7 +42,7 @@ export default function LaneDetails({ lane, incidents, triggerAnalysis = false }
           <MapPin className="h-4 w-4" />
           <span className="font-medium">{lane.origin}</span>
           <span>→</span>
-          <span className="font-medium">{lane.destination}</span>
+          <span className="font-medium">{lane.dest}</span>
         </div>
       </div>
 
@@ -50,14 +51,12 @@ export default function LaneDetails({ lane, incidents, triggerAnalysis = false }
         <div className="bg-card border rounded-lg p-3">
           <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
             <Package className="h-3 w-3" />
-            <span>Shipments</span>
+            <span>Daily Volume</span>
           </div>
-          <div className="text-2xl font-bold">{lane.shipmentCount}</div>
-          {lane.urgentShipments > 0 && (
-            <div className="text-xs text-red-600 font-medium mt-1">
-              {lane.urgentShipments} urgent
-            </div>
-          )}
+          <div className="text-2xl font-bold">{lane.avgDailyVolume.toLocaleString()}</div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {lane.onTimePct.toFixed(0)}% on-time
+          </div>
         </div>
 
         <div className="bg-card border rounded-lg p-3">
@@ -118,7 +117,7 @@ export default function LaneDetails({ lane, incidents, triggerAnalysis = false }
 
       {/* Root Cause Analysis */}
       {triggerAnalysis && lane.mode === "air" && incidents.length > 0 && (
-        <RootCauseAnalysis lane={lane} incidents={incidents} />
+        <RootCauseAnalysis laneId={lane.id} incidents={incidents} triggerAnalysis={triggerAnalysis} />
       )}
     </div>
   );

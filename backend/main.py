@@ -2,12 +2,16 @@ import os
 import json
 from typing import Optional
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.serving import ChatMessage, ChatMessageRole
+
+# Import database and agents layers
+from backend.db import LogisticsDB
+from backend.agents import AgentsClient, get_agents_client
 
 # Create separate FastAPI apps for API and UI
 api_app = FastAPI(title="Logistics AI Backend API")
@@ -28,9 +32,14 @@ MODEL_ENDPOINT = os.getenv("DATABRICKS_MODEL_ENDPOINT", "databricks-gpt-oss-20b"
 # Get CLI profile name from environment variable (defaults to DEFAULT if not set)
 CLI_PROFILE = os.getenv("DATABRICKS_CLI_PROFILE", "DEFAULT")
 
+# Get SQL Warehouse ID
+SQL_WAREHOUSE_ID = os.getenv("DATABRICKS_SQL_WAREHOUSE_ID")
+
 # Initialize Databricks client
 # This works both locally (with CLI OAuth) and in Databricks Apps (with automatic auth)
 workspace_client = None
+logistics_db = None
+agents_client = None
 
 def get_databricks_client() -> Optional[WorkspaceClient]:
     """Get or create a Databricks client with proper authentication handling"""
@@ -120,6 +129,72 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     message: str
     source: str
+
+
+class GenieQueryRequest(BaseModel):
+    question: str
+
+
+class GenieQueryResponse(BaseModel):
+    answer: str
+    sql: Optional[str] = None
+    data: Optional[list] = None
+    source: str
+
+
+class KnowledgeQueryRequest(BaseModel):
+    question: str
+    context: Optional[dict] = None
+
+
+class KnowledgeQueryResponse(BaseModel):
+    answer: str
+    citations: Optional[list] = None
+    source: str
+
+
+class SupervisorQueryRequest(BaseModel):
+    message: str
+    context: Optional[dict] = None
+
+
+class SupervisorQueryResponse(BaseModel):
+    message: str
+    source: str
+
+
+def get_logistics_db() -> Optional[LogisticsDB]:
+    """Get or create LogisticsDB instance."""
+    global logistics_db
+    
+    if logistics_db is None:
+        client = get_databricks_client()
+        if client and SQL_WAREHOUSE_ID:
+            try:
+                logistics_db = LogisticsDB(client, SQL_WAREHOUSE_ID)
+                print(f"✓ Initialized LogisticsDB with warehouse: {SQL_WAREHOUSE_ID}")
+            except Exception as e:
+                print(f"⚠ Warning: Could not initialize LogisticsDB: {e}")
+                return None
+        else:
+            print("⚠ Warning: Databricks client or SQL Warehouse ID not available")
+            return None
+    
+    return logistics_db
+
+
+def get_agents_client_instance() -> Optional[AgentsClient]:
+    """Get or create AgentsClient instance."""
+    global agents_client
+    
+    if agents_client is None:
+        agents_client = get_agents_client()
+        if agents_client:
+            print("✓ Initialized AgentsClient")
+        else:
+            print("⚠ Warning: Could not initialize AgentsClient")
+    
+    return agents_client
 
 
 def build_prompt(payload: CustomerUpdateRequest) -> str:
@@ -360,24 +435,41 @@ Network Operations Center"""
 async def health():
     """Health check endpoint for the API"""
     client = get_databricks_client()
+    db = get_logistics_db()
+    agents = get_agents_client_instance()
+    
     return {
         "status": "ok",
         "service": "Logistics AI Backend",
         "model_endpoint": MODEL_ENDPOINT,
         "databricks_connected": client is not None,
+        "database_connected": db is not None,
+        "agents_configured": agents is not None,
+        "sql_warehouse_id": SQL_WAREHOUSE_ID if SQL_WAREHOUSE_ID else None,
         "auth_mode": "databricks_app" if os.getenv('DATABRICKS_APP_NAME') else "cli"
     }
 
 
 @api_app.post("/chat", response_model=ChatResponse)
 async def chat_with_ai(request: ChatRequest):
-    """Chat with the Databricks AI about incidents and root cause analysis."""
+    """Chat with the Multi-Agent Supervisor about incidents and root cause analysis."""
     
     try:
-        # Get Databricks client (CLI for local dev, service principal for Databricks Apps)
-        client = get_databricks_client()
+        # Try Multi-Agent Supervisor first
+        agents = get_agents_client_instance()
+        if agents and agents.supervisor_endpoint:
+            try:
+                result = agents.query_supervisor(request.message, request.context)
+                if result.get("source") != "error":
+                    return ChatResponse(
+                        message=result["message"],
+                        source="supervisor"
+                    )
+            except Exception as e:
+                print(f"Supervisor query failed, falling back: {e}")
         
-        # Try to call the Databricks model
+        # Fallback to direct model serving
+        client = get_databricks_client()
         if client:
             # Build context-aware prompt
             context_prompt = ""
@@ -463,6 +555,16 @@ User question: {request.message}"""
 @api_app.get("/centers")
 async def get_centers():
     """Get all distribution centers"""
+    db = get_logistics_db()
+    if db:
+        try:
+            return db.get_centers()
+        except Exception as e:
+            print(f"Error querying centers: {e}")
+            # Fallback to JSON
+            pass
+    
+    # Fallback to JSON file
     try:
         centers_file = Path(__file__).parent.parent / "public" / "mock" / "centers.json"
         with open(centers_file) as f:
@@ -472,96 +574,298 @@ async def get_centers():
 
 
 @api_app.get("/shipments")
-async def get_shipments():
-    """Get all shipments"""
+async def get_shipments(laneId: Optional[str] = Query(None), priority: Optional[str] = Query(None)):
+    """Get all shipments, optionally filtered by lane and/or priority"""
+    db = get_logistics_db()
+    if db:
+        try:
+            return db.get_shipments(lane_id=laneId, priority=priority)
+        except Exception as e:
+            print(f"Error querying shipments: {e}")
+            # Fallback to JSON
+            pass
+    
+    # Fallback to JSON file
     try:
         shipments_file = Path(__file__).parent.parent / "public" / "mock" / "shipments.json"
         with open(shipments_file) as f:
-            return json.load(f)
+            all_shipments = json.load(f)
+            # Apply filters if provided
+            if laneId:
+                all_shipments = [s for s in all_shipments if s.get("laneId") == laneId]
+            if priority:
+                all_shipments = [s for s in all_shipments if s.get("priority") == priority]
+            return all_shipments
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load shipments: {str(e)}")
 
 
-def generate_fallback_message(payload: CustomerUpdateRequest) -> str:
-    """Generate a fallback spot quote using template logic."""
+@api_app.get("/lanes")
+async def get_lanes():
+    """Get all lanes"""
+    db = get_logistics_db()
+    if db:
+        try:
+            return db.get_lanes()
+        except Exception as e:
+            print(f"Error querying lanes: {e}")
+            # Fallback to JSON
+            pass
     
-    action_type = request.action.get("type", "pull_forward")
-    volume_change = abs(request.volumeChange)
-    nps_impact = request.action.get("npsImpact", 0)
-    cost_impact = request.action.get("costImpact", 0)
-    efficiency_impact = request.action.get("efficiencyImpact", 0) * 100
+    # Fallback to JSON file
+    try:
+        lanes_file = Path(__file__).parent.parent / "public" / "mock" / "lanes.json"
+        with open(lanes_file) as f:
+            return json.load(f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load lanes: {str(e)}")
+
+
+@api_app.get("/incidents")
+async def get_incidents(laneId: Optional[str] = Query(None)):
+    """Get incidents, optionally filtered by lane"""
+    db = get_logistics_db()
+    if db:
+        try:
+            return db.get_incidents(lane_id=laneId)
+        except Exception as e:
+            print(f"Error querying incidents: {e}")
+            # Fallback to JSON
+            pass
     
-    lane_id = request.laneId
-    current_volume = request.lane.get("avgDailyVolume", 0)
-    utilization = request.lane.get("utilizationPct", 0) * 100
-    available_capacity = request.lane.get("availableCapacity", 0)
+    # Fallback to JSON file
+    try:
+        incidents_file = Path(__file__).parent.parent / "public" / "mock" / "incidents.json"
+        with open(incidents_file) as f:
+            all_incidents = json.load(f)
+            if laneId:
+                all_incidents = [i for i in all_incidents if i.get("laneId") == laneId]
+            return all_incidents
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load incidents: {str(e)}")
+
+
+@api_app.get("/reroute-suggestions")
+async def get_reroute_suggestions(laneId: str = Query(..., description="Lane ID")):
+    """Get reroute suggestions for a lane"""
+    db = get_logistics_db()
+    if db:
+        try:
+            return db.get_reroute_suggestions(laneId)
+        except Exception as e:
+            print(f"Error querying reroute suggestions: {e}")
+            # Fallback to JSON
+            pass
     
-    # Calculate new utilization
-    new_volume = current_volume + (volume_change if action_type == "pull_forward" else -volume_change)
-    max_capacity = request.lane.get("maxCapacity", current_volume / (utilization / 100))
-    new_utilization = (new_volume / max_capacity) * 100
+    # Fallback to JSON file
+    try:
+        reroute_file = Path(__file__).parent.parent / "public" / "mock" / "reroute_solutions.json"
+        with open(reroute_file) as f:
+            all_suggestions = json.load(f)
+            return [s for s in all_suggestions if s.get("laneId") == laneId]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load reroute suggestions: {str(e)}")
+
+
+@api_app.get("/customers")
+async def get_customers(ids: Optional[str] = Query(None, description="Comma-separated customer IDs")):
+    """Get customers, optionally filtered by IDs"""
+    customer_ids = ids.split(",") if ids else None
     
-    # Calculate price per package
-    price_per_pkg = abs(cost_impact) / volume_change if volume_change > 0 else 0
+    db = get_logistics_db()
+    if db:
+        try:
+            return db.get_customers(ids=customer_ids)
+        except Exception as e:
+            print(f"Error querying customers: {e}")
+            # Fallback to JSON
+            pass
     
-    action_verb = "Pull Forward" if action_type == "pull_forward" else "Hold Back"
-    delivery_commit = "Next-Day Delivery" if action_type == "pull_forward" else "2-Day Standard Service"
+    # Fallback to JSON file (if it exists)
+    try:
+        customers_file = Path(__file__).parent.parent / "public" / "mock" / "customers.json"
+        if customers_file.exists():
+            with open(customers_file) as f:
+                all_customers = json.load(f)
+                if customer_ids:
+                    all_customers = [c for c in all_customers if c.get("id") in customer_ids]
+                return all_customers
+    except Exception as e:
+        print(f"Error loading customers fallback: {e}")
     
-    quote = f"""SPOT CAPACITY QUOTE
-Lane: {lane_id}
-Quote ID: SQ-{lane_id.replace('-', '')}-{action_type.upper()[:4]}-001
+    return []
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-CAPACITY OPTIMIZATION OPPORTUNITY
-
-Action: {action_verb} {volume_change:,} Packages
-Current Lane Utilization: {utilization:.0f}%
-Projected Utilization: {new_utilization:.0f}%
-Available Buffer: {available_capacity:,} packages
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-PRICING
-
-Volume: {volume_change:,} packages
-Rate: ${price_per_pkg:.2f} per package
-Total: ${abs(cost_impact):,.2f}
-
-Service Level: {delivery_commit}
-{"Premium handling included" if action_type == "pull_forward" else "Standard processing"}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-BUSINESS IMPACT ANALYSIS
-
-Customer Satisfaction (NPS): {nps_impact:+d} points
-Operational Efficiency: {efficiency_impact:+.1f}%
-Network Optimization: {"Reduced congestion" if action_type == "hold_back" else "Maximized throughput"}
-
-{'✓ Recommended: Improves customer experience' if nps_impact > 0 else '⚠ Note: May impact customer satisfaction'}
-{'✓ Improves operational efficiency' if efficiency_impact > 0 else '⚠ Reduces operational efficiency'}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-TERMS & CONDITIONS
-
-• Quote valid for: 24 hours
-• Subject to: Real-time capacity availability
-• Commitment required: 4 hours advance notice
-• Cancellation policy: Up to 2 hours before scheduled pickup
-• Payment terms: Net 30 days
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-For approval or questions, contact:
-Network Capacity Planning Team
-Email: capacity@databricks.com | Phone: 1-800-DATABRICKS
-
-This quote represents an optimal balance between customer satisfaction
-and operational efficiency based on current network conditions."""
+@api_app.get("/capacity/lanes")
+async def get_capacity_lanes():
+    """Get capacity lane data"""
+    db = get_logistics_db()
+    if db:
+        try:
+            return db.get_capacity_lanes()
+        except Exception as e:
+            print(f"Error querying capacity lanes: {e}")
+            # Fallback to JSON
+            pass
     
-    return quote
+    # Fallback to JSON file (if it exists)
+    try:
+        capacity_file = Path(__file__).parent.parent / "public" / "mock" / "capacity_lanes.json"
+        if capacity_file.exists():
+            with open(capacity_file) as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Error loading capacity lanes fallback: {e}")
+    
+    return []
+
+
+@api_app.get("/capacity/actions/{laneId}")
+async def get_capacity_actions(laneId: str):
+    """Get capacity actions for a lane"""
+    db = get_logistics_db()
+    if db:
+        try:
+            return db.get_capacity_actions(laneId)
+        except Exception as e:
+            print(f"Error querying capacity actions: {e}")
+            # Fallback to JSON
+            pass
+    
+    # Fallback to JSON file (if it exists)
+    try:
+        actions_file = Path(__file__).parent.parent / "public" / "mock" / "capacity_actions.json"
+        if actions_file.exists():
+            with open(actions_file) as f:
+                all_actions = json.load(f)
+                if isinstance(all_actions, dict):
+                    return all_actions.get(laneId, [])
+                return []
+    except Exception as e:
+        print(f"Error loading capacity actions fallback: {e}")
+    
+    return []
+
+
+@api_app.get("/agent-activities")
+async def get_agent_activities(laneId: Optional[str] = Query(None)):
+    """Get agent activities, optionally filtered by lane"""
+    db = get_logistics_db()
+    if db:
+        try:
+            return db.get_agent_activities(lane_id=laneId)
+        except Exception as e:
+            print(f"Error querying agent activities: {e}")
+            # Fallback to JSON
+            pass
+    
+    # Fallback to JSON file (if it exists)
+    try:
+        activities_file = Path(__file__).parent.parent / "public" / "mock" / "agent_activities.json"
+        if activities_file.exists():
+            with open(activities_file) as f:
+                all_activities = json.load(f)
+                if laneId:
+                    all_activities = [a for a in all_activities if a.get("laneId") == laneId]
+                return all_activities
+    except Exception as e:
+        print(f"Error loading agent activities fallback: {e}")
+    
+    return []
+
+
+@api_app.get("/sales-opportunities")
+async def get_sales_opportunities(laneId: str = Query(..., description="Lane ID"), 
+                                  activityId: str = Query(..., description="Activity ID")):
+    """Get sales opportunity for a lane and activity"""
+    db = get_logistics_db()
+    if db:
+        try:
+            opportunity = db.get_sales_opportunities(laneId, activityId)
+            return opportunity if opportunity else {}
+        except Exception as e:
+            print(f"Error querying sales opportunities: {e}")
+            # Fallback to JSON
+            pass
+    
+    # Fallback to JSON file (if it exists)
+    try:
+        opportunities_file = Path(__file__).parent.parent / "public" / "mock" / "sales_opportunities.json"
+        if opportunities_file.exists():
+            with open(opportunities_file) as f:
+                all_opportunities = json.load(f)
+                for opp in all_opportunities:
+                    if opp.get("laneId") == laneId and opp.get("activityId") == activityId:
+                        return opp
+    except Exception as e:
+        print(f"Error loading sales opportunities fallback: {e}")
+    
+    return {}
+
+
+@api_app.post("/genie/query", response_model=GenieQueryResponse)
+async def query_genie(request: GenieQueryRequest):
+    """Query structured data via Genie space"""
+    agents = get_agents_client_instance()
+    if agents:
+        try:
+            result = agents.query_genie(request.question)
+            return GenieQueryResponse(**result)
+        except Exception as e:
+            print(f"Error querying Genie: {e}")
+            return GenieQueryResponse(
+                answer=f"Error querying Genie: {str(e)}",
+                source="error"
+            )
+    
+    return GenieQueryResponse(
+        answer="Genie space not configured",
+        source="error"
+    )
+
+
+@api_app.post("/knowledge/query", response_model=KnowledgeQueryResponse)
+async def query_knowledge(request: KnowledgeQueryRequest):
+    """Query unstructured docs via Knowledge Assistant"""
+    agents = get_agents_client_instance()
+    if agents:
+        try:
+            result = agents.query_knowledge_assistant(request.question, request.context)
+            return KnowledgeQueryResponse(**result)
+        except Exception as e:
+            print(f"Error querying Knowledge Assistant: {e}")
+            return KnowledgeQueryResponse(
+                answer=f"Error querying Knowledge Assistant: {str(e)}",
+                source="error"
+            )
+    
+    return KnowledgeQueryResponse(
+        answer="Knowledge Assistant not configured",
+        source="error"
+    )
+
+
+@api_app.post("/supervisor/query", response_model=SupervisorQueryResponse)
+async def query_supervisor(request: SupervisorQueryRequest):
+    """Route complex queries through Multi-Agent Supervisor"""
+    agents = get_agents_client_instance()
+    if agents:
+        try:
+            result = agents.query_supervisor(request.message, request.context)
+            return SupervisorQueryResponse(**result)
+        except Exception as e:
+            print(f"Error querying Supervisor: {e}")
+            return SupervisorQueryResponse(
+                message=f"Error querying Supervisor: {str(e)}",
+                source="error"
+            )
+    
+    return SupervisorQueryResponse(
+        message="Multi-Agent Supervisor not configured",
+        source="error"
+    )
+
+
 
 
 @api_app.post("/generate-customer-update", response_model=CustomerUpdateResponse)
@@ -569,6 +873,14 @@ async def generate_customer_update(request: CustomerUpdateRequest):
     """Generate a customer update message using Databricks model with fallback."""
     
     try:
+        # Enrich request with real data from database if available
+        db = get_logistics_db()
+        if db and request.customer is None:
+            # Fetch customer data from database
+            customers = db.get_customers(ids=[request.customerName] if request.customerName else None)
+            if customers:
+                request.customer = customers[0]
+        
         # Get Databricks client (CLI for local dev, service principal for Databricks Apps)
         client = get_databricks_client()
         

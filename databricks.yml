@@ -1,0 +1,92 @@
+# Databricks Asset Bundle Configuration
+# Deploys logistics control center resources to Databricks workspace
+
+bundle:
+  name: logistics-control-center
+
+variables:
+  warehouse_id:
+    description: "SQL Warehouse ID for running SQL statements"
+    default: "2fe54b32b36329be"
+  catalog:
+    description: "Unity Catalog catalog name"
+    default: "demos"
+  schema:
+    description: "Unity Catalog schema name"
+    default: "logistics_control_center"
+
+targets:
+  dev:
+    mode: development
+    workspace:
+      profile: dev
+    variables:
+      warehouse_id: "2fe54b32b36329be"
+      catalog: "demos"
+      schema: "logistics_control_center"
+
+resources:
+  # Databricks App
+  apps:
+    logistics_control_center:
+      name: logistics-incident-response
+      source_code_path: .
+
+  # Note: UC Volume demos.logistics_control_center.documents already exists
+  # and is managed outside this bundle.
+
+  # Setup job - runs once to create tables, seed data, generate docs, and setup Lakebase
+  jobs:
+    logistics_setup:
+      name: logistics-control-center-setup
+      max_concurrent_runs: 2
+      tasks:
+        - task_key: create_tables
+          description: "Create all Delta tables in Unity Catalog"
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: databricks/notebooks/setup_tables.sql
+          timeout_seconds: 600
+
+        - task_key: seed_data
+          description: "Load initial data from mock JSON files into Delta tables"
+          notebook_task:
+            notebook_path: databricks/notebooks/seed_data.py
+          depends_on:
+            - task_key: create_tables
+          timeout_seconds: 600
+
+        - task_key: generate_documents
+          description: "Generate markdown documents for Knowledge Assistant"
+          notebook_task:
+            notebook_path: databricks/notebooks/generate_documents.py
+          depends_on:
+            - task_key: create_tables
+          timeout_seconds: 600
+
+        - task_key: setup_lakebase
+          description: "Create Lakebase Autoscaling Postgres instance"
+          notebook_task:
+            notebook_path: databricks/notebooks/setup_lakebase.py
+          depends_on:
+            - task_key: create_tables
+          timeout_seconds: 600
+
+      max_concurrent_runs: 2
+      timeout_seconds: 2400
+
+    logistics_stream_simulator:
+      name: logistics-control-center-stream-simulator
+      description: "Continuous data streaming simulator for real-time mutations"
+      tasks:
+        - task_key: stream_simulator
+          description: "Simulate real-time data mutations (shipments, incidents, lanes, capacity, agents)"
+          notebook_task:
+            notebook_path: databricks/notebooks/stream_simulator.py
+          timeout_seconds: 0  # Run indefinitely
+      max_concurrent_runs: 1
+      schedule:
+        quartz_cron_expression: "*/30 * * * * ?"  # Every 30 seconds
+        timezone_id: "UTC"
+      timeout_seconds: 0

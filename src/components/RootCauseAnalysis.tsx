@@ -3,6 +3,7 @@ import type { JSX } from "react";
 import { Brain, TrendingUp, AlertTriangle, CheckCircle2, Clock, Send, Loader2 } from "lucide-react";
 import type { Incident } from "@/types/domain";
 import { Button } from "@/components/ui/button";
+import { queryKnowledge } from "@/lib/mockApi";
 
 // Get backend URL from environment variable
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8001/api";
@@ -58,11 +59,6 @@ export default function RootCauseAnalysis({ incidents, triggerAnalysis = false, 
     inc.cause.toLowerCase().includes("mechanical") ||
     inc.cause.toLowerCase().includes("hydraulic") ||
     inc.cause.toLowerCase().includes("maintenance")
-  );
-  
-  // Check specifically for landing gear issue for detailed analysis
-  const hasLandingGearIssue = incidents.some(inc => 
-    inc.cause.toLowerCase().includes("landing gear")
   );
   
   // Auto-scroll to bottom when messages change
@@ -136,90 +132,61 @@ export default function RootCauseAnalysis({ incidents, triggerAnalysis = false, 
   useEffect(() => {
     if (!hasMechanicalIssue || !triggerAnalysis) return;
 
-    // Start AI analysis
+    // Start AI analysis using Knowledge Assistant
     setIsAnalyzing(true);
     setMessages([]); // Clear any existing messages
     
-    // If it's a landing gear issue, use the detailed hardcoded analysis
-    // Otherwise, show a simpler analysis for maintenance checks
-    if (hasLandingGearIssue) {
-      // Detailed landing gear analysis
-      const analysisSequence = [
+    // Add initial system message
+    setMessages([{
+      role: "system",
+      content: "Initiating automated root cause analysis...",
+      source: "system"
+    }]);
+    
+    // Build question for Knowledge Assistant
+    const incidentRef = mechanicalIncident?.ref || "Unknown";
+    const incidentType = mechanicalIncident?.type?.replace(/_/g, ' ') || "mechanical issue";
+    const question = `Analyze incident ${incidentRef} on lane ${laneId || 'unknown'}. This is a ${incidentType} with cause: ${mechanicalIncident?.cause || 'unknown'}. Check maintenance history, similar past incidents, and provide root cause analysis with recommended actions.`;
+    
+    // Query Knowledge Assistant
+    queryKnowledge(question, {
+      incident: mechanicalIncident,
+      lane: { id: laneId }
+    }).then((result) => {
+      // Add analysis messages
+      setMessages(prev => [
+        ...prev,
         {
-          role: "system" as const,
-          content: "Initiating automated root cause analysis...",
-          delay: 500
+          role: "assistant",
+          content: `🔍 Analyzing incident: ${incidentRef} - ${incidentType}`,
+          source: result.source
         },
         {
-          role: "assistant" as const,
-          content: "🔍 Analyzing incident: FX891 - Landing gear mechanical issue",
-          delay: 1200
-        },
-      {
-        role: "assistant" as const,
-        content: "📊 Querying historical maintenance database...",
-        delay: 1800
-      },
-      {
-        role: "assistant" as const,
-        content: "⚠️ **Root Cause Analysis Complete**\n\nIncreased landing gear incidents detected across fleet:\n\n• **Last 30 days**: 12 landing gear related delays\n• **Previous 30 days**: 4 landing gear related delays\n• **Change**: +200% increase\n\n**Affected Aircraft**: Boeing 757-200 fleet (tail numbers N915FD, N923FD, N891FD)\n\n**Common Issue**: Hydraulic actuator wear on main landing gear assembly - exceeding normal wear patterns by 35%\n\n**Recommended Actions**:\n1. ✅ Immediate inspection of all 757-200 landing gear systems\n2. ✅ Expedite hydraulic actuator replacement on affected aircraft\n3. ✅ Review maintenance intervals with OEM engineering\n4. ✅ Consider fleet-wide preventive maintenance cycle",
-        delay: 2500
-      },
-      {
-        role: "assistant" as const,
-        content: "📋 **Historical Pattern Analysis**:\n\n• Similar pattern observed in Q2 2024 led to proactive maintenance program\n• Previous resolution: Shortened inspection intervals from 500 to 350 flight hours\n• Cost of proactive maintenance: $450K vs $2.1M in delay costs prevented\n\n💡 **Recommendation**: Initiate proactive maintenance protocol immediately to prevent cascade failures.",
-        delay: 3200
-      }
-    ];
-
-      // Add messages one by one
-      let currentDelay = 0;
-      analysisSequence.forEach((msg, idx) => {
-        currentDelay += msg.delay;
-        setTimeout(() => {
-          setMessages(prev => [...prev, { role: msg.role, content: msg.content, isTyping: idx === analysisSequence.length - 1 }]);
-          if (idx === analysisSequence.length - 1) {
-            setIsAnalyzing(false);
-          }
-        }, currentDelay);
-      });
-    } else if (mechanicalIncident) {
-      // Simpler analysis for other mechanical issues (like maintenance checks)
-      const analysisSequence = [
-        {
-          role: "system" as const,
-          content: "Initiating automated root cause analysis...",
-          delay: 500
+          role: "assistant",
+          content: "📊 Querying historical maintenance database and incident reports...",
+          source: result.source
         },
         {
-          role: "assistant" as const,
-          content: `🔍 Analyzing incident: ${mechanicalIncident.ref} - ${mechanicalIncident.type.replace(/_/g, ' ')}`,
-          delay: 1200
-        },
-        {
-          role: "assistant" as const,
-          content: "📊 Querying fleet maintenance database...",
-          delay: 1800
-        },
-        {
-          role: "assistant" as const,
-          content: `⚠️ **Analysis Complete**\n\n**Incident**: ${mechanicalIncident.cause}\n\n**Impact**: ${mechanicalIncident.impactMinutes} minutes delay\n\n**Assessment**: Routine maintenance issue detected with ${(mechanicalIncident.confidence * 100).toFixed(0)}% confidence.\n\n**Status**: \n• ✅ Issue identified and addressed during pre-flight check\n• ✅ No fleet-wide pattern detected\n• ✅ Normal operational variance - within acceptable limits\n\n**Recommendation**: Continue standard monitoring procedures. No additional action required at this time.`,
-          delay: 2500
+          role: "assistant",
+          content: result.answer || "Analysis complete. No specific recommendations available.",
+          source: result.source
         }
-      ];
-
-      let currentDelay = 0;
-      analysisSequence.forEach((msg, idx) => {
-        currentDelay += msg.delay;
-        setTimeout(() => {
-          setMessages(prev => [...prev, { role: msg.role, content: msg.content, isTyping: idx === analysisSequence.length - 1 }]);
-          if (idx === analysisSequence.length - 1) {
-            setIsAnalyzing(false);
-          }
-        }, currentDelay);
-      });
-    }
-  }, [hasMechanicalIssue, hasLandingGearIssue, mechanicalIncident, triggerAnalysis, incidentsKey]);
+      ]);
+      setIsAnalyzing(false);
+    }).catch((error) => {
+      console.error("Error querying Knowledge Assistant:", error);
+      // Fallback to simple analysis
+      setMessages(prev => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `⚠️ **Analysis Complete**\n\n**Incident**: ${mechanicalIncident?.cause || 'Unknown'}\n\n**Impact**: ${mechanicalIncident?.impactMinutes || 0} minutes delay\n\n**Assessment**: Maintenance issue detected with ${((mechanicalIncident?.confidence || 0) * 100).toFixed(0)}% confidence.\n\n**Status**: \n• ✅ Issue identified\n• ✅ Standard monitoring procedures recommended\n\n**Note**: Unable to access detailed analysis. Please check back later.`,
+          source: "fallback"
+        }
+      ]);
+      setIsAnalyzing(false);
+    });
+  }, [hasMechanicalIssue, mechanicalIncident, triggerAnalysis, incidentsKey, laneId]);
 
   // Don't show anything if analysis hasn't been triggered yet
   if (!triggerAnalysis) {

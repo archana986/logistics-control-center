@@ -23,15 +23,32 @@ export async function getCenters(): Promise<Center[]> {
 
 export async function getLanes(): Promise<Lane[]> {
   await sleep(350);
-  const response = await fetch("/mock/lanes.json");
-  return response.json();
+  try {
+    const response = await fetch(`${BACKEND_URL}/lanes`);
+    if (!response.ok) throw new Error('Backend unavailable');
+    return response.json();
+  } catch (error) {
+    // Fallback to local mock data if backend is unavailable
+    console.warn('Backend unavailable, using local mock data:', error);
+    const response = await fetch("/mock/lanes.json");
+    return response.json();
+  }
 }
 
 export async function getIncidents(laneId?: string): Promise<Incident[]> {
   await sleep(300);
-  const response = await fetch("/mock/incidents.json");
-  const all: Incident[] = await response.json();
-  return laneId ? all.filter((i) => i.laneId === laneId) : all;
+  try {
+    const url = laneId ? `${BACKEND_URL}/incidents?laneId=${laneId}` : `${BACKEND_URL}/incidents`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Backend unavailable');
+    return response.json();
+  } catch (error) {
+    // Fallback to local mock data
+    console.warn('Backend unavailable, using local mock data:', error);
+    const response = await fetch("/mock/incidents.json");
+    const all: Incident[] = await response.json();
+    return laneId ? all.filter((i) => i.laneId === laneId) : all;
+  }
 }
 
 export async function getUrgentShipments(laneId: string): Promise<Shipment[]> {
@@ -52,24 +69,36 @@ export async function getUrgentShipments(laneId: string): Promise<Shipment[]> {
 
 export async function getRerouteSuggestions(laneId: string): Promise<RerouteSuggestion[]> {
   await sleep(400);
-  const response = await fetch("/mock/reroute_solutions.json");
-  const all: RerouteSuggestion[] = await response.json();
-  return all.filter((r) => r.laneId === laneId);
+  try {
+    const response = await fetch(`${BACKEND_URL}/reroute-suggestions?laneId=${laneId}`);
+    if (!response.ok) throw new Error('Backend unavailable');
+    return response.json();
+  } catch (error) {
+    // Fallback to local mock data
+    console.warn('Backend unavailable, using local mock data:', error);
+    const response = await fetch("/mock/reroute_solutions.json");
+    const all: RerouteSuggestion[] = await response.json();
+    return all.filter((r) => r.laneId === laneId);
+  }
 }
 
 export async function getCustomers(ids?: string[]): Promise<Customer[]> {
   await sleep(200);
   try {
-    const response = await fetch(`${BACKEND_URL}/customers`);
+    const url = ids ? `${BACKEND_URL}/customers?ids=${ids.join(',')}` : `${BACKEND_URL}/customers`;
+    const response = await fetch(url);
     if (!response.ok) throw new Error('Backend unavailable');
-    const all: Customer[] = await response.json();
-    return ids ? all.filter((c) => ids.includes(c.id)) : all;
+    return response.json();
   } catch (error) {
     // Fallback to local mock data
     console.warn('Backend unavailable, using local mock data:', error);
-    const response = await fetch("/mock/customers.json");
-    const all: Customer[] = await response.json();
-    return ids ? all.filter((c) => ids.includes(c.id)) : all;
+    try {
+      const response = await fetch("/mock/customers.json");
+      const all: Customer[] = await response.json();
+      return ids ? all.filter((c) => ids.includes(c.id)) : all;
+    } catch {
+      return [];
+    }
   }
 }
 
@@ -118,15 +147,102 @@ export async function getCapacityActions(laneId: string): Promise<CapacityAction
 
 export async function getAgentActivities(laneId?: string): Promise<AgentActivity[]> {
   await sleep(250);
-  const response = await fetch("/mock/agent_activities.json");
-  const all: AgentActivity[] = await response.json();
-  return laneId ? all.filter((a) => a.laneId === laneId) : all;
+  try {
+    const url = laneId ? `${BACKEND_URL}/agent-activities?laneId=${laneId}` : `${BACKEND_URL}/agent-activities`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Backend unavailable');
+    return response.json();
+  } catch (error) {
+    // Fallback to local mock data
+    console.warn('Backend unavailable, using local mock data:', error);
+    try {
+      const response = await fetch("/mock/agent_activities.json");
+      const all: AgentActivity[] = await response.json();
+      return laneId ? all.filter((a) => a.laneId === laneId) : all;
+    } catch {
+      return [];
+    }
+  }
 }
 
 export async function getSalesOpportunity(laneId: string, activityId: string): Promise<SalesOpportunity | null> {
   await sleep(300);
-  const response = await fetch("/mock/sales_opportunities.json");
-  const all: SalesOpportunity[] = await response.json();
-  return all.find((o) => o.laneId === laneId && o.activityId === activityId) || null;
+  try {
+    const response = await fetch(`${BACKEND_URL}/sales-opportunities?laneId=${laneId}&activityId=${activityId}`);
+    if (!response.ok) throw new Error('Backend unavailable');
+    const data = await response.json();
+    return data && Object.keys(data).length > 0 ? data as SalesOpportunity : null;
+  } catch (error) {
+    // Fallback to local mock data
+    console.warn('Backend unavailable, using local mock data:', error);
+    try {
+      const response = await fetch("/mock/sales_opportunities.json");
+      const all: SalesOpportunity[] = await response.json();
+      return all.find((o) => o.laneId === laneId && o.activityId === activityId) || null;
+    } catch {
+      return null;
+    }
+  }
+}
+
+// Agent query functions
+export async function queryGenie(question: string): Promise<{ answer: string; sql?: string; data?: any[]; source: string }> {
+  try {
+    const response = await fetch(`${BACKEND_URL}/genie/query`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ question }),
+    });
+    if (!response.ok) throw new Error('Backend unavailable');
+    return response.json();
+  } catch (error) {
+    console.error("Error querying Genie:", error);
+    return {
+      answer: "Unable to query Genie. Please try again later.",
+      source: "error"
+    };
+  }
+}
+
+export async function queryKnowledge(question: string, context?: Record<string, any>): Promise<{ answer: string; citations?: string[]; source: string }> {
+  try {
+    const response = await fetch(`${BACKEND_URL}/knowledge/query`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ question, context }),
+    });
+    if (!response.ok) throw new Error('Backend unavailable');
+    return response.json();
+  } catch (error) {
+    console.error("Error querying Knowledge Assistant:", error);
+    return {
+      answer: "Unable to query Knowledge Assistant. Please try again later.",
+      source: "error"
+    };
+  }
+}
+
+export async function querySupervisor(message: string, context?: Record<string, any>): Promise<{ message: string; source: string }> {
+  try {
+    const response = await fetch(`${BACKEND_URL}/supervisor/query`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ message, context }),
+    });
+    if (!response.ok) throw new Error('Backend unavailable');
+    return response.json();
+  } catch (error) {
+    console.error("Error querying Supervisor:", error);
+    return {
+      message: "Unable to query Multi-Agent Supervisor. Please try again later.",
+      source: "error"
+    };
+  }
 }
 
