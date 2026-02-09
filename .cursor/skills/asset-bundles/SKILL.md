@@ -239,6 +239,34 @@ databricks bundle deploy --auto-approve      # Skip confirmation prompts
 databricks bundle deploy --force             # Force overwrite remote changes
 ```
 
+⚠️ **Important: App Source Code Path Update**
+
+After deploying a bundle that includes an App resource, you MUST update the app's source code path to point to the deployed bundle location in the workspace. The bundle deploys code to `/Workspace/Users/{username}/.bundle/{bundle-name}/{target}/files`, but the app resource configuration may not automatically update the app's source path.
+
+**After `databricks bundle deploy`, run:**
+```bash
+# Update app to point to deployed bundle location
+databricks apps deploy <app-name> \
+  --source-code-path /Workspace/Users/{username}/.bundle/{bundle-name}/{target}/files \
+  --profile <profile-name>
+
+# Example for this project:
+databricks apps deploy logistics-incident-response \
+  --source-code-path /Workspace/Users/josh.melton@databricks.com/.bundle/logistics-control-center/dev/files \
+  --profile dev
+```
+
+**Why this is needed:**
+- Bundle deployment uploads code to a workspace path
+- The app resource definition may reference a local path (`source_code_path: ../src/app`)
+- The deployed app needs to point to the workspace path where the bundle uploaded the files
+- Without this update, the app may be running outdated code or fail to start
+
+**When to do this:**
+- After every `databricks bundle deploy` that includes app changes
+- If the app is not reflecting code changes after deployment
+- If app logs show errors about missing files or outdated code
+
 ### Running Resources
 ```bash
 databricks bundle run resource_name          # Run a pipeline or job
@@ -297,6 +325,7 @@ databricks bundle destroy -t prod --auto-approve
 | **App not starting after deploy** | Apps require `databricks bundle run <resource_key>` to start |
 | **App env vars not working** | Environment variables go in `app.yaml` (source dir), not databricks.yml |
 | **Wrong app source path** | Use `../` from resources/ dir if source is in project root |
+| **App not reflecting code changes after bundle deploy** | After `databricks bundle deploy`, run `databricks apps deploy <app-name> --source-code-path /Workspace/Users/{username}/.bundle/{bundle-name}/{target}/files` to update app source path |
 | **Debugging any app issue** | First step: `databricks apps logs <app-name>` to see what went wrong |
 
 ## Key Principles

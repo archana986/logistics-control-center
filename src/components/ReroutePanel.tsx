@@ -1,7 +1,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-import { getRerouteSuggestions, getUrgentShipments, getIncidents } from "@/lib/mockApi";
+import { getRerouteSuggestions, getIncidents, getAllShipments } from "@/lib/mockApi";
 import { formatCurrency, formatDuration } from "@/lib/format";
 import type { RerouteSuggestion, Shipment, Incident } from "@/types/domain";
 import { ArrowRight, CheckCircle2, DollarSign, Clock, Package, PartyPopper } from "lucide-react";
@@ -31,11 +31,12 @@ export default function ReroutePanel({ laneId, open, onOpenChange, onComplete }:
     setLoading(true);
     Promise.all([
       getRerouteSuggestions(laneId),
-      getUrgentShipments(laneId),
+      getAllShipments(),
       getIncidents(laneId)
-    ]).then(([sugs, ships, incs]) => {
+    ]).then(([sugs, allShips, incs]) => {
       setSuggestions(sugs);
-      setShipments(ships);
+      // Filter to all shipments on this lane (not just HIGH priority)
+      setShipments(allShips.filter(s => s.laneId === laneId));
       setIncidents(incs);
       setLoading(false);
     });
@@ -49,11 +50,13 @@ export default function ReroutePanel({ laneId, open, onOpenChange, onComplete }:
   // Calculate total packages affected
   const totalPackages = shipments.reduce((sum, shipment) => sum + (shipment.packageCount || 1), 0);
   
-  // Calculate scaled cost (the base cost is for a typical shipment batch, scale it to actual package count)
+  // Calculate scaled cost based on actual package count
   const getScaledCost = (baseCost: number) => {
-    // Assume base cost in mock data is for ~100 packages, scale proportionally
+    if (baseCost === 0) return 0;
+    // Use the base cost from mock data directly as per-route cost, scaled by package volume
     const basePackageCount = 100;
-    return Math.round((baseCost / basePackageCount) * totalPackages);
+    const effectivePackages = Math.max(totalPackages, basePackageCount);
+    return Math.round((baseCost / basePackageCount) * effectivePackages);
   };
   
   const parseRouteDescription = (laneId: string, strategy: string) => {
