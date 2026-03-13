@@ -1,0 +1,146 @@
+flowchart LR
+    %% ─────────────────────────────────────────────
+    %% CLASS DEFINITIONS
+    %% ─────────────────────────────────────────────
+    classDef source    fill:#1565C0,stroke:#0D47A1,color:#FFFFFF,rx:6
+    classDef table     fill:#E65100,stroke:#BF360C,color:#FFFFFF,rx:6
+    classDef feature   fill:#C62828,stroke:#B71C1C,color:#FFFFFF,rx:6
+    classDef api       fill:#2E7D32,stroke:#1B5E20,color:#FFFFFF,rx:6
+    classDef ui        fill:#6A1B9A,stroke:#4A148C,color:#FFFFFF,rx:6
+
+    %% ─────────────────────────────────────────────
+    %% LAYER 1 – SOURCE SYSTEMS
+    %% ─────────────────────────────────────────────
+    subgraph SRC["  Source Systems  "]
+        direction TB
+        S1[IoT / GPS Sensors]
+        S2[TMS\nTransportation Mgmt]
+        S3[Weather APIs]
+        S4[FAA Flight Data]
+        S5[DOT Road Data]
+        S6[Internal Docs\n& SOPs]
+        S7[CRM – Salesforce]
+        S8[Carrier Contracts\n& Capacity Data]
+    end
+
+    %% ─────────────────────────────────────────────
+    %% LAYER 2 – DELTA TABLES
+    %% ─────────────────────────────────────────────
+    subgraph TBL["  Delta Tables  "]
+        direction TB
+        T1[centers]
+        T2[lanes]
+        T3[incidents]
+        T5[shipments]
+        T6[customers]
+        T7[customer_interactions]
+        T10[capacity_lanes]
+        T11[Volumes\nOps Manuals / SOPs\nIncident Reports]
+        T12[sensor_data]
+    end
+
+    %% ─────────────────────────────────────────────
+    %% LAYER 3 – DATABRICKS FEATURES
+    %% ─────────────────────────────────────────────
+    subgraph DBX["  Databricks Features  "]
+        direction TB
+        F1[Declarative Pipelines\nNetwork & Lane Processing]
+        F2[Declarative Pipelines\nStreaming Metrics]
+        F3[Declarative Pipelines\nPredictive Maintenance]
+        F4[Knowledge Assistant Agent Brick\nRAG + Genie + Multi-Agent Supervisor]
+        J1[Databricks Job\nRoute Optimization Solver\ne.g. OR-Tools / PuLP]
+        F6[Foundation Model Serving\nCustom Agent]
+        F8[Declarative Pipelines\nCapacity Metrics\n+ Genie Queries]
+    end
+
+    %% ─────────────────────────────────────────────
+    %% LAYER 4 – API ENDPOINTS
+    %% ─────────────────────────────────────────────
+    subgraph API["  API Layer  "]
+        direction TB
+        A1[GET /centers\nGET /lanes]
+        A2[GET /incidents\n?laneId=]
+        A3[POST /api/knowledge\n/query]
+        A4[GET /reroute-suggestions\n?laneId=\nGET /shipments]
+        A5[POST /api/generate\n-customer-update]
+        A7[GET /capacity/lanes]
+    end
+
+    %% ─────────────────────────────────────────────
+    %% LAYER 5 – UI COMPONENTS
+    %% ─────────────────────────────────────────────
+    subgraph UI["  UI Components  "]
+        direction TB
+        U1[MapView\nDeckGL Arc Visualization]
+        U2[KPICards\nNetwork Health Metrics]
+        U3[IncidentTimeline\nRoot Cause Events]
+        U4[RootCauseAnalysis\nAI Chat]
+        U5[ReroutePanel\nDecision Support]
+        U6[GenAIDrawer\nCustomer Update Generator]
+        U8[KPICards – Capacity Mode\nUtilization & Lane Status]
+    end
+
+    %% ─────────────────────────────────────────────
+    %% EDGES – Source Systems → Delta Tables
+    %% ─────────────────────────────────────────────
+    S1 --> T1
+    S1 --> T2
+    S2 --> T1
+    S2 --> T2
+    S2 --> T5
+    S3 --> T3
+    S4 --> T3
+    S5 --> T3
+    S1 --> T12
+    S6 --> T11
+    S7 --> T6
+    S7 --> T7
+    S8 --> T10
+
+    %% ─────────────────────────────────────────────
+    %% EDGES – Delta Tables → Databricks Features
+    %% ─────────────────────────────────────────────
+    T1 --> F1
+    T2 --> F1
+    T2 --> F2
+    T3 --> F3
+    T12 --> F3
+    T3 --> F4
+    T11 --> F4
+    T2 --> J1
+    T5 --> J1
+    T10 --> J1
+    T6 --> F6
+    T7 --> F6
+    T10 --> F8
+
+    %% ─────────────────────────────────────────────
+    %% EDGES – Databricks Features → API Endpoints
+    %% ─────────────────────────────────────────────
+    F1 --> A1
+    F2 --> A1
+    F3 --> A2
+    F4 --> A3
+    J1 --> A4
+    F6 --> A5
+    F8 --> A7
+
+    %% ─────────────────────────────────────────────
+    %% EDGES – API Endpoints → UI Components
+    %% ─────────────────────────────────────────────
+    A1 --> U1
+    A1 --> U2
+    A2 --> U3
+    A3 --> U4
+    A4 --> U5
+    A5 --> U6
+    A7 --> U8
+
+    %% ─────────────────────────────────────────────
+    %% APPLY CLASSES
+    %% ─────────────────────────────────────────────
+    class S1,S2,S3,S4,S5,S6,S7,S8 source
+    class T1,T2,T3,T5,T6,T7,T10,T11,T12 table
+    class F1,F2,F3,F4,J1,F6,F8 feature
+    class A1,A2,A3,A4,A5,A7 api
+    class U1,U2,U3,U4,U5,U6,U8 ui
