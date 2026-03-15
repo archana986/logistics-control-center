@@ -1,107 +1,168 @@
-# Databricks Asset Bundle Configuration
-# Deploys logistics control center resources to Databricks workspace
+# Databricks Asset Bundle for Logistics Control Center
 
 bundle:
   name: logistics-control-center
 
+workspace:
+  root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+
 variables:
   warehouse_id:
-    description: "SQL Warehouse ID for running SQL statements"
+    description: SQL Warehouse ID used by SQL tasks and app queries
     default: "2fe54b32b36329be"
   catalog:
-    description: "Unity Catalog catalog name"
+    description: Unity Catalog catalog
     default: "demos"
   schema:
-    description: "Unity Catalog schema name"
+    description: Unity Catalog schema
     default: "logistics_control_center"
+  genie_space_id:
+    description: Existing Genie Space ID (optional; can be populated after setup job)
+    default: ""
+  ka_endpoint:
+    description: Knowledge Assistant endpoint name
+    default: ""
+  supervisor_endpoint:
+    description: Supervisor endpoint name (optional)
+    default: ""
 
 targets:
   dev:
     mode: development
+    default: true
     workspace:
-      profile: dev
+      profile: DEFAULT
     variables:
       warehouse_id: "2fe54b32b36329be"
       catalog: "demos"
       schema: "logistics_control_center"
 
 resources:
-  # Databricks App
   apps:
-    logistics_control_center:
+    logistics_control_center_app:
       name: logistics-incident-response
+      description: "Logistics Control Center Databricks App"
       source_code_path: .
 
-  # Note: UC Volume demos.logistics_control_center.documents already exists
-  # and is managed outside this bundle.
+  pipelines:
+    logistics_streaming_pipeline:
+      name: logistics-control-center-streaming
+      catalog: ${var.catalog}
+      schema: ${var.schema}
+      development: true
+      channel: CURRENT
+      continuous: false
+      serverless: true
+      libraries:
+        - file:
+            path: databricks/pipelines/01_bronze.sql
+        - file:
+            path: databricks/pipelines/02_silver.sql
+        - file:
+            path: databricks/pipelines/03_gold.sql
 
-  # Setup job - runs once to create tables, seed data, generate docs, and setup Lakebase
   jobs:
     logistics_setup:
       name: logistics-control-center-setup
-      max_concurrent_runs: 2
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "5"
       tasks:
-        - task_key: create_tables
-          description: "Create all Delta tables in Unity Catalog"
+        - task_key: create_foundation
+          description: Create schema, volumes, and serving/raw tables
           sql_task:
             warehouse_id: ${var.warehouse_id}
             file:
               path: databricks/notebooks/setup_tables.sql
-          timeout_seconds: 600
 
-        - task_key: seed_data
-          description: "Load initial data from mock JSON files into Delta tables"
-          notebook_task:
-            notebook_path: databricks/notebooks/seed_data.py
+        - task_key: generate_synthetic_data
+          description: Seed synthetic logistics data and raw event files
           depends_on:
-            - task_key: create_tables
-          timeout_seconds: 600
+            - task_key: create_foundation
+          environment_key: default
+          spark_python_task:
+            python_file: databricks/notebooks/generate_synthetic_data.py
+
+        - task_key: create_helper_metric_views
+          description: Create helper and metric views for Genie/backend
+          depends_on:
+            - task_key: generate_synthetic_data
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: databricks/notebooks/create_helper_metric_views.sql
 
         - task_key: generate_documents
-          description: "Generate markdown documents for Knowledge Assistant"
-          notebook_task:
-            notebook_path: databricks/notebooks/generate_documents.py
+          description: Generate synthetic KA documents in UC volume
           depends_on:
-            - task_key: create_tables
-          timeout_seconds: 600
+            - task_key: create_foundation
+          environment_key: default
+          spark_python_task:
+            python_file: databricks/notebooks/generate_documents.py
 
-      max_concurrent_runs: 2
-      timeout_seconds: 2400
+        - task_key: reroute_optimization_seed
+          description: Generate initial reroute candidates
+          depends_on:
+            - task_key: generate_synthetic_data
+          environment_key: default
+          spark_python_task:
+            python_file: databricks/notebooks/run_reroute_optimization.py
 
-    logistics_stream_simulator:
-      name: logistics-control-center-stream-simulator
-      description: "Continuous data streaming simulator for real-time mutations"
-      tasks:
-        - task_key: stream_simulator
-          description: "Simulate real-time data mutations (shipments, incidents, lanes, capacity, agents)"
-          notebook_task:
-            notebook_path: databricks/notebooks/stream_simulator.py
-          timeout_seconds: 0  # Run indefinitely
+        - task_key: create_genie_space
+          description: Create or update Genie space from metric views
+          depends_on:
+            - task_key: create_helper_metric_views
+          environment_key: default
+          spark_python_task:
+            python_file: databricks/notebooks/create_genie_space.py
+
+        - task_key: create_knowledge_assistant
+          description: Create or update Knowledge Assistant from generated docs
+          depends_on:
+            - task_key: generate_documents
+          environment_key: default
+          spark_python_task:
+            python_file: databricks/notebooks/create_knowledge_assistant.py
+
+    logistics_streaming_refresh:
+      name: logistics-control-center-streaming-refresh
       max_concurrent_runs: 1
       schedule:
-        quartz_cron_expression: "*/30 * * * * ?"  # Every 30 seconds
+        quartz_cron_expression: "0 */5 * * * ?"
         timezone_id: "UTC"
-      timeout_seconds: 0
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "5"
+      tasks:
+        - task_key: append_raw_events
+          description: Append incremental events to UC volume landing zones
+          environment_key: default
+          spark_python_task:
+            python_file: databricks/notebooks/stream_events_to_volume.py
 
-  # Lakebase Autoscaling Postgres (commented out - uncomment to deploy)
-  # Reference: https://docs.databricks.com/aws/en/dev-tools/bundles/resources#postgres_project
-  # postgres_projects:
-  #   logistics_demo:
-  #     project_id: logistics-demo
-  #     display_name: "Logistics Control Center Demo - Lakebase Postgres Database"
-  #     pg_version: 17
-  #
-  # postgres_branches:
-  #   main:
-  #     parent: ${resources.postgres_projects.logistics_demo.id}
-  #     branch_id: main
-  #     is_protected: false
-  #     no_expiry: true
-  #
-  # postgres_endpoints:
-  #   primary:
-  #     parent: ${resources.postgres_branches.main.id}
-  #     endpoint_id: primary
-  #     endpoint_type: ENDPOINT_TYPE_READ_WRITE
-  #     autoscaling_limit_min_cu: 0.5
-  #     autoscaling_limit_max_cu: 2.0
+        - task_key: run_pipeline_update
+          description: Trigger declarative pipeline update
+          depends_on:
+            - task_key: append_raw_events
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.logistics_streaming_pipeline.id}
+
+        - task_key: refresh_serving_tables
+          description: Sync gold outputs to serving Delta tables
+          depends_on:
+            - task_key: run_pipeline_update
+          environment_key: default
+          spark_python_task:
+            python_file: databricks/notebooks/refresh_serving_tables.py
+
+        - task_key: reroute_optimization_refresh
+          description: Refresh reroute suggestions from current incident/capacity state
+          depends_on:
+            - task_key: refresh_serving_tables
+          environment_key: default
+          spark_python_task:
+            python_file: databricks/notebooks/run_reroute_optimization.py

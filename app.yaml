@@ -18,7 +18,7 @@ env:
   - name: NODE_ENV
     value: production
   - name: DATABRICKS_MODEL_ENDPOINT
-    value: databricks-gpt-5-1
+    value: databricks-gpt-oss-120b
   - name: VITE_BACKEND_URL
     value: /api
   # SQL Warehouse ID - set this to your SQL Warehouse ID
@@ -31,9 +31,9 @@ env:
     value: logistics_control_center
   # Agent Bricks Configuration - set these after creating agents
   - name: DATABRICKS_GENIE_SPACE_ID
-    value: "<genie-space-id>"
+    value: ""
   - name: DATABRICKS_KA_ENDPOINT
-    value: "ka-3c254141-endpoint"
+    value: ""
   - name: DATABRICKS_SUPERVISOR_ENDPOINT
-    value: "<supervisor-endpoint-name>"
+    value: ""
 

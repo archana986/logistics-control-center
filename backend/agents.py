@@ -13,6 +13,7 @@ from typing import Optional, Dict, Any
 
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.serving import ChatMessage, ChatMessageRole
+from databricks.sdk.service.sql import StatementState
 
 
 def _extract_agent_text(response_json: dict) -> tuple[str, list]:
@@ -88,13 +89,45 @@ class AgentsClient:
             return {"answer": "Genie space not configured", "sql": None, "data": [], "source": "error"}
 
         try:
-            return {
-                "answer": f"Genie query for: {question}",
-                "sql": f"-- Generated SQL for: {question}",
-                "data": [],
-                "source": "genie",
-                "note": "Genie integration requires Genie Conversations API access",
-            }
+            message = self.client.genie.start_conversation_and_wait(
+                space_id=self.genie_space_id,
+                content=question,
+            )
+            text_parts: list[str] = []
+            query_text: Optional[str] = None
+            rows: list[dict] = []
+
+            for attachment in getattr(message, "attachments", []) or []:
+                text_obj = getattr(attachment, "text", None)
+                if text_obj and getattr(text_obj, "content", None):
+                    text_parts.append(str(text_obj.content))
+
+                query_obj = getattr(attachment, "query", None)
+                if query_obj and not query_text:
+                    query_text = getattr(query_obj, "query", None)
+                    attachment_id = getattr(attachment, "attachment_id", None)
+                    if attachment_id and getattr(message, "conversation_id", None) and getattr(message, "id", None):
+                        try:
+                            result = self.client.genie.get_message_attachment_query_result(
+                                space_id=self.genie_space_id,
+                                conversation_id=message.conversation_id,
+                                message_id=message.id,
+                                attachment_id=str(attachment_id),
+                            )
+                            statement_response = getattr(result, "statement_response", None)
+                            if statement_response and statement_response.status and statement_response.status.state == StatementState.SUCCEEDED:
+                                # Parse simple row output
+                                if statement_response.result and statement_response.result.data_array:
+                                    cols = [c.name for c in statement_response.manifest.schema.columns]
+                                    for row in statement_response.result.data_array:
+                                        rows.append({cols[i]: row[i] if i < len(row) else None for i in range(len(cols))})
+                        except Exception:
+                            pass
+
+            answer = "\\n\\n".join(part.strip() for part in text_parts if part and part.strip())
+            if not answer:
+                answer = "Genie returned no text answer for this question."
+            return {"answer": answer, "sql": query_text, "data": rows, "source": "genie"}
         except Exception as e:
             return {"answer": f"Error querying Genie: {str(e)}", "sql": None, "data": [], "source": "error"}
 

@@ -1,4 +1,4 @@
-# Databricks notebook source
+# Logistics Control Center - Generate Documents for Knowledge Assistant
 # MAGIC %md
 # MAGIC # Generate Documents for Knowledge Assistant
 # MAGIC 

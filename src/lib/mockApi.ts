@@ -14,10 +14,8 @@ export async function getCenters(): Promise<Center[]> {
     if (!response.ok) throw new Error('Backend unavailable');
     return response.json();
   } catch (error) {
-    // Fallback to local mock data if backend is unavailable
-    console.warn('Backend unavailable, using local mock data:', error);
-    const response = await fetch("/mock/centers.json");
-    return response.json();
+    console.error('Backend unavailable for centers:', error);
+    return [];
   }
 }
 
@@ -28,10 +26,8 @@ export async function getLanes(): Promise<Lane[]> {
     if (!response.ok) throw new Error('Backend unavailable');
     return response.json();
   } catch (error) {
-    // Fallback to local mock data if backend is unavailable
-    console.warn('Backend unavailable, using local mock data:', error);
-    const response = await fetch("/mock/lanes.json");
-    return response.json();
+    console.error('Backend unavailable for lanes:', error);
+    return [];
   }
 }
 
@@ -43,11 +39,8 @@ export async function getIncidents(laneId?: string): Promise<Incident[]> {
     if (!response.ok) throw new Error('Backend unavailable');
     return response.json();
   } catch (error) {
-    // Fallback to local mock data
-    console.warn('Backend unavailable, using local mock data:', error);
-    const response = await fetch("/mock/incidents.json");
-    const all: Incident[] = await response.json();
-    return laneId ? all.filter((i) => i.laneId === laneId) : all;
+    console.error('Backend unavailable for incidents:', error);
+    return [];
   }
 }
 
@@ -59,11 +52,8 @@ export async function getUrgentShipments(laneId: string): Promise<Shipment[]> {
     const all: Shipment[] = await response.json();
     return all.filter((s) => s.laneId === laneId && s.priority === "HIGH");
   } catch (error) {
-    // Fallback to local mock data
-    console.warn('Backend unavailable, using local mock data:', error);
-    const response = await fetch("/mock/shipments.json");
-    const all: Shipment[] = await response.json();
-    return all.filter((s) => s.laneId === laneId && s.priority === "HIGH");
+    console.error('Backend unavailable for urgent shipments:', error);
+    return [];
   }
 }
 
@@ -74,11 +64,8 @@ export async function getRerouteSuggestions(laneId: string): Promise<RerouteSugg
     if (!response.ok) throw new Error('Backend unavailable');
     return response.json();
   } catch (error) {
-    // Fallback to local mock data
-    console.warn('Backend unavailable, using local mock data:', error);
-    const response = await fetch("/mock/reroute_solutions.json");
-    const all: RerouteSuggestion[] = await response.json();
-    return all.filter((r) => r.laneId === laneId);
+    console.error('Backend unavailable for reroute suggestions:', error);
+    return [];
   }
 }
 
@@ -90,15 +77,8 @@ export async function getCustomers(ids?: string[]): Promise<Customer[]> {
     if (!response.ok) throw new Error('Backend unavailable');
     return response.json();
   } catch (error) {
-    // Fallback to local mock data
-    console.warn('Backend unavailable, using local mock data:', error);
-    try {
-      const response = await fetch("/mock/customers.json");
-      const all: Customer[] = await response.json();
-      return ids ? all.filter((c) => ids.includes(c.id)) : all;
-    } catch {
-      return [];
-    }
+    console.error('Backend unavailable for customers:', error);
+    return [];
   }
 }
 
@@ -109,10 +89,8 @@ export async function getAllShipments(): Promise<Shipment[]> {
     if (!response.ok) throw new Error('Backend unavailable');
     return response.json();
   } catch (error) {
-    // Fallback to local mock data
-    console.warn('Backend unavailable, using local mock data:', error);
-    const response = await fetch("/mock/shipments.json");
-    return response.json();
+    console.error('Backend unavailable for shipments:', error);
+    return [];
   }
 }
 
@@ -123,10 +101,8 @@ export async function getCapacityLanes(): Promise<CapacityLane[]> {
     if (!response.ok) throw new Error('Backend unavailable');
     return response.json();
   } catch (error) {
-    // Fallback to local mock data
-    console.warn('Backend unavailable, using local mock data:', error);
-    const response = await fetch("/mock/capacity_lanes.json");
-    return response.json();
+    console.error('Backend unavailable for capacity lanes:', error);
+    return [];
   }
 }
 
@@ -137,11 +113,8 @@ export async function getCapacityActions(laneId: string): Promise<CapacityAction
     if (!response.ok) throw new Error('Backend unavailable');
     return response.json();
   } catch (error) {
-    // Fallback to local mock data
-    console.warn('Backend unavailable, using local mock data:', error);
-    const response = await fetch("/mock/capacity_actions.json");
-    const all: Record<string, CapacityAction[]> = await response.json();
-    return all[laneId] || [];
+    console.error('Backend unavailable for capacity actions:', error);
+    return [];
   }
 }
 
@@ -153,15 +126,8 @@ export async function getAgentActivities(laneId?: string): Promise<AgentActivity
     if (!response.ok) throw new Error('Backend unavailable');
     return response.json();
   } catch (error) {
-    // Fallback to local mock data
-    console.warn('Backend unavailable, using local mock data:', error);
-    try {
-      const response = await fetch("/mock/agent_activities.json");
-      const all: AgentActivity[] = await response.json();
-      return laneId ? all.filter((a) => a.laneId === laneId) : all;
-    } catch {
-      return [];
-    }
+    console.error('Backend unavailable for agent activities:', error);
+    return [];
   }
 }
 
@@ -173,15 +139,8 @@ export async function getSalesOpportunity(laneId: string, activityId: string): P
     const data = await response.json();
     return data && Object.keys(data).length > 0 ? data as SalesOpportunity : null;
   } catch (error) {
-    // Fallback to local mock data
-    console.warn('Backend unavailable, using local mock data:', error);
-    try {
-      const response = await fetch("/mock/sales_opportunities.json");
-      const all: SalesOpportunity[] = await response.json();
-      return all.find((o) => o.laneId === laneId && o.activityId === activityId) || null;
-    } catch {
-      return null;
-    }
+    console.error('Backend unavailable for sales opportunities:', error);
+    return null;
   }
 }
 
