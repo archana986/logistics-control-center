@@ -33,8 +33,10 @@ def test_genie_query_returns_genie_source_when_configured(api_base_url: str) -> 
 def test_knowledge_query_returns_ka_source_when_configured(api_base_url: str) -> None:
     health = _health(api_base_url)
     ka_endpoint = health.get("ka_env_var") or health.get("agents_ka_endpoint")
-    if not ka_endpoint:
-        pytest.skip("Knowledge Assistant endpoint is not configured in environment.")
+    assert ka_endpoint, (
+        "Knowledge Assistant endpoint is not configured. "
+        "Set DATABRICKS_KA_ENDPOINT and ensure the endpoint exists."
+    )
 
     status, payload = post_json(
         api_base_url,
@@ -44,7 +46,6 @@ def test_knowledge_query_returns_ka_source_when_configured(api_base_url: str) ->
     assert status == 200
     assert isinstance(payload, dict)
     source = payload.get("source")
-    if source == "error":
-        pytest.skip(f"KA call returned error: {payload.get('answer')}")
+    assert source != "error", f"KA call returned error: {payload.get('answer')}"
     assert source == "knowledge_assistant"
     assert payload.get("answer")

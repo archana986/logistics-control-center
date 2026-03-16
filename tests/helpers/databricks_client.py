@@ -40,7 +40,9 @@ def find_job_by_suffix(client: WorkspaceClient, suffix: str) -> dict[str, Any] |
 
 def find_pipeline_by_name(client: WorkspaceClient, name: str) -> dict[str, Any] | None:
     for pipeline in list_pipelines(client):
-        if pipeline.get("name") == name:
+        pipeline_name = pipeline.get("name", "")
+        # Bundle development mode prefixes resource names, e.g. "[dev user] <name>"
+        if pipeline_name == name or pipeline_name.endswith(name):
             return pipeline
     return None
 
