@@ -1,5 +1,5 @@
 -- Logistics Control Center data foundation
--- Catalog/schema are fixed to the agreed initial target:
+-- Catalog/schema are fixed to the existing target:
 --   demos.logistics_control_center
 --
 -- This script creates:
@@ -7,8 +7,10 @@
 -- 2) canonical serving tables consumed by API/UI
 -- 3) Delta options for efficient writes
 
-CREATE CATALOG IF NOT EXISTS demos;
-CREATE SCHEMA IF NOT EXISTS demos.logistics_control_center;
+-- Do not create catalog/schema here; this deployment expects the namespace
+-- to already exist.
+USE CATALOG demos;
+USE SCHEMA logistics_control_center;
 
 CREATE VOLUME IF NOT EXISTS demos.logistics_control_center.raw_data;
 CREATE VOLUME IF NOT EXISTS demos.logistics_control_center.documents;

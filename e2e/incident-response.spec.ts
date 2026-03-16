@@ -28,9 +28,14 @@ async function trySelectLane(page: any): Promise<boolean> {
 
 test("incident response page loads core controls", async ({ page }) => {
   await page.goto("/incident-response");
-  await expect(page.getByText("Network Control Center")).toBeVisible();
-  await expect(page.getByText("All Risk Levels")).toBeVisible();
-  await expect(page.getByText("All Customers")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Network Control Center" })).toBeVisible();
+
+  const filters = page.locator("select");
+  await expect(filters).toHaveCount(2);
+  await expect(filters.nth(0)).toBeVisible();
+  await expect(filters.nth(1)).toBeVisible();
+  await expect(filters.nth(0)).toHaveValue("");
+  await expect(filters.nth(1)).toHaveValue("");
 });
 
 test("reroute drawer opens after selecting a lane", async ({ page }) => {

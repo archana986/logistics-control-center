@@ -15,8 +15,16 @@ def test_helper_views_exist(workspace_client, warehouse_id: str, catalog: str, s
         "api_lane_health",
         "api_customer_rollup",
     }
-    rows = run_sql(workspace_client, warehouse_id, f"SHOW VIEWS IN {catalog}.{schema}")
-    view_names = {row.get("viewName") for row in rows}
+    rows = run_sql(
+        workspace_client,
+        warehouse_id,
+        f"""
+        SELECT table_name
+        FROM {catalog}.information_schema.views
+        WHERE table_schema = '{schema}'
+        """,
+    )
+    view_names = {row.get("table_name") for row in rows}
     missing = sorted(expected_views - view_names)
     assert not missing, f"Missing helper views: {missing}"
 
@@ -47,10 +55,10 @@ def test_helper_views_are_queryable(workspace_client, warehouse_id: str, catalog
 
 def test_metric_views_are_queryable(workspace_client, warehouse_id: str, catalog: str, schema: str) -> None:
     queries = [
-        f"SELECT `Avg Delay Minutes` FROM {catalog}.{schema}.network_metrics LIMIT 1",
-        f"SELECT `Total Packages` FROM {catalog}.{schema}.shipment_metrics LIMIT 1",
-        f"SELECT `Incident Count` FROM {catalog}.{schema}.incident_metrics LIMIT 1",
-        f"SELECT `Avg Utilization Pct` FROM {catalog}.{schema}.capacity_metrics LIMIT 1",
+        f"SELECT MEASURE(`Avg Delay Minutes`) AS metric_value FROM {catalog}.{schema}.network_metrics LIMIT 1",
+        f"SELECT MEASURE(`Total Packages`) AS metric_value FROM {catalog}.{schema}.shipment_metrics LIMIT 1",
+        f"SELECT MEASURE(`Incident Count`) AS metric_value FROM {catalog}.{schema}.incident_metrics LIMIT 1",
+        f"SELECT MEASURE(`Avg Utilization Pct`) AS metric_value FROM {catalog}.{schema}.capacity_metrics LIMIT 1",
     ]
     for query in queries:
         rows = run_sql(workspace_client, warehouse_id, query)

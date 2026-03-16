@@ -35,27 +35,8 @@ def _resolve_warehouse(client: WorkspaceClient, candidate_id: str) -> str:
 def _serialized_space() -> str:
     payload = {
         "version": 2,
-        "config": {
-            "sample_questions": [
-                {"question": ["Which lanes have the highest health risk score?"]},
-                {"question": ["Show delayed shipment counts by lane."]},
-                {"question": ["What are the active incidents by type?"]},
-                {"question": ["Which lanes have the least available capacity?"]},
-            ]
-        },
         "data_sources": {
             "metric_views": [{"identifier": mv} for mv in sorted(METRIC_VIEWS)]
-        },
-        "instructions": {
-            "text_instructions": [
-                {
-                    "id": "lcclanehealth001",
-                    "content": [
-                        "For network risk questions, prioritize network_metrics Avg Lane Health Score and Critical Lane Count.",
-                        "For shipment service questions, prioritize shipment_metrics Delayed Shipment Count and In Transit Packages.",
-                    ],
-                }
-            ]
         },
     }
     return json.dumps(payload)
@@ -73,19 +54,43 @@ for space in resp.spaces or []:
         break
 
 if existing:
-    updated = client.genie.update_space(
-        space_id=existing.space_id,
-        title=DISPLAY_NAME,
-        description=DESCRIPTION,
-        warehouse_id=warehouse_id,
-        serialized_space=serialized,
-    )
-    print(f"Updated Genie space: {updated.space_id}")
+    if hasattr(client.genie, "update_space"):
+        updated = client.genie.update_space(
+            space_id=existing.space_id,
+            title=DISPLAY_NAME,
+            description=DESCRIPTION,
+            warehouse_id=warehouse_id,
+            serialized_space=serialized,
+        )
+        space_id = updated.space_id
+    else:
+        payload = {
+            "title": DISPLAY_NAME,
+            "description": DESCRIPTION,
+            "warehouse_id": warehouse_id,
+            "serialized_space": serialized,
+        }
+        updated = client.api_client.do("PATCH", f"/api/2.0/genie/spaces/{existing.space_id}", body=payload)
+        space_id = updated.get("space_id") or existing.space_id
+    print(f"Updated Genie space: {space_id}")
+    print(f"DATABRICKS_GENIE_SPACE_ID={space_id}")
 else:
-    created = client.genie.create_space(
-        title=DISPLAY_NAME,
-        description=DESCRIPTION,
-        warehouse_id=warehouse_id,
-        serialized_space=serialized,
-    )
-    print(f"Created Genie space: {created.space_id}")
+    if hasattr(client.genie, "create_space"):
+        created = client.genie.create_space(
+            title=DISPLAY_NAME,
+            description=DESCRIPTION,
+            warehouse_id=warehouse_id,
+            serialized_space=serialized,
+        )
+        space_id = created.space_id
+    else:
+        payload = {
+            "title": DISPLAY_NAME,
+            "description": DESCRIPTION,
+            "warehouse_id": warehouse_id,
+            "serialized_space": serialized,
+        }
+        created = client.api_client.do("POST", "/api/2.0/genie/spaces", body=payload)
+        space_id = created.get("space_id")
+    print(f"Created Genie space: {space_id}")
+    print(f"DATABRICKS_GENIE_SPACE_ID={space_id}")

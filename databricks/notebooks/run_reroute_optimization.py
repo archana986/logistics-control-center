@@ -9,8 +9,6 @@ Produces ranked reroute options based on:
 
 from __future__ import annotations
 
-from datetime import datetime
-
 CATALOG = "demos"
 SCHEMA = "logistics_control_center"
 
@@ -21,7 +19,6 @@ lanes = [r.asDict() for r in lanes_df.collect()]
 incident_lanes = {r["laneId"] for r in incidents_df.select("laneId").distinct().collect()}
 
 results: list[dict] = []
-now = datetime.utcnow()
 
 for lane in lanes:
     lane_id = lane["id"]
@@ -57,7 +54,6 @@ for lane in lanes:
                 "addedCostUSD": added_cost,
                 "capacityUsedPct": capacity_used_pct,
                 "notes": notes,
-                "created_at": now,
             }
         )
 
@@ -75,9 +71,12 @@ else:
           tgt.deltaETAminutes = src.deltaETAminutes,
           tgt.addedCostUSD = src.addedCostUSD,
           tgt.capacityUsedPct = src.capacityUsedPct,
-          tgt.notes = src.notes,
-          tgt.created_at = src.created_at
-        WHEN NOT MATCHED THEN INSERT *
+          tgt.notes = src.notes
+        WHEN NOT MATCHED THEN INSERT (
+          laneId, strategy, deltaETAminutes, addedCostUSD, capacityUsedPct, notes
+        ) VALUES (
+          src.laneId, src.strategy, src.deltaETAminutes, src.addedCostUSD, src.capacityUsedPct, src.notes
+        )
         """
     )
     print(f"Upserted {len(results)} reroute candidates.")

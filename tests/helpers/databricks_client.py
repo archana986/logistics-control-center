@@ -6,7 +6,7 @@ from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.sql import StatementState
 
 
-def list_jobs(client: WorkspaceClient, *, limit: int = 200) -> list[dict[str, Any]]:
+def list_jobs(client: WorkspaceClient, *, limit: int = 100) -> list[dict[str, Any]]:
     response = client.api_client.do("GET", "/api/2.2/jobs/list", query={"limit": limit})
     return list(response.get("jobs", []))
 
@@ -71,8 +71,16 @@ def run_sql(client: WorkspaceClient, warehouse_id: str, sql: str) -> list[dict[s
     if not execution.result or not execution.result.data_array:
         return []
 
-    columns = execution.result.manifest.schema.columns
+    # StatementExecutionResponse stores schema metadata in top-level manifest.
+    columns = []
+    if execution.manifest and execution.manifest.schema and execution.manifest.schema.columns:
+        columns = execution.manifest.schema.columns
+
     names = [c.name for c in columns]
+    if not names and execution.result.data_array:
+        # Fallback when schema metadata is not returned.
+        names = [f"col_{idx}" for idx in range(len(execution.result.data_array[0]))]
+
     rows: list[dict[str, Any]] = []
     for row in execution.result.data_array:
         rows.append({names[idx]: row[idx] if idx < len(row) else None for idx in range(len(names))})

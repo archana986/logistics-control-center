@@ -31,9 +31,9 @@ env:
     value: logistics_control_center
   # Agent Bricks Configuration - set these after creating agents
   - name: DATABRICKS_GENIE_SPACE_ID
-    value: ""
+    value: "01f120920e7c116990a980acfaf405ee"
   - name: DATABRICKS_KA_ENDPOINT
-    value: ""
+    value: "ka-3c254141-endpoint"
   - name: DATABRICKS_SUPERVISOR_ENDPOINT
     value: ""
 

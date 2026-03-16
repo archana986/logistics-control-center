@@ -1,69 +1,33 @@
-"""
-Create or update a Knowledge Assistant and attach volume-based knowledge source.
+"""Resolve the Knowledge Assistant serving endpoint for the app.
+
+This runtime does not always include the newer typed SDK module for
+Knowledge Assistants, so this task falls back to endpoint discovery and emits
+the endpoint name to wire into app config.
 """
 
 from __future__ import annotations
 
 from databricks.sdk import WorkspaceClient
-from databricks.sdk.service.knowledgeassistants import KnowledgeAssistant, KnowledgeSource
 
-CATALOG = "demos"
-SCHEMA = "logistics_control_center"
-KA_DISPLAY_NAME = "Logistics Operations Knowledge Assistant"
-VOLUME_PATH = f"/Volumes/{CATALOG}/{SCHEMA}/documents"
+PREFERRED_ENDPOINT = "ka-3c254141-endpoint"
 
 client = WorkspaceClient()
 
-existing = None
-for ka in client.knowledge_assistants.list_knowledge_assistants():
-    if getattr(ka, "display_name", None) == KA_DISPLAY_NAME:
-        existing = ka
-        break
+all_endpoints = [ep.name for ep in client.serving_endpoints.list() if ep.name]
 
-if existing:
-    ka_obj = client.knowledge_assistants.update_knowledge_assistant(
-        name=existing.name,
-        knowledge_assistant=KnowledgeAssistant(
-            display_name=KA_DISPLAY_NAME,
-            description="Answers logistics SOP, incident, and reroute process questions from UC volume docs.",
-            instructions=(
-                "Use only the uploaded logistics documents. "
-                "Quote process steps and include concise operational guidance."
-            ),
-        ),
-        update_mask="display_name,description,instructions",
-    )
-    print(f"Updated knowledge assistant: {ka_obj.name}")
+selected = None
+if PREFERRED_ENDPOINT in all_endpoints:
+    selected = PREFERRED_ENDPOINT
 else:
-    ka_obj = client.knowledge_assistants.create_knowledge_assistant(
-        knowledge_assistant=KnowledgeAssistant(
-            display_name=KA_DISPLAY_NAME,
-            description="Answers logistics SOP, incident, and reroute process questions from UC volume docs.",
-            instructions=(
-                "Use only the uploaded logistics documents. "
-                "Quote process steps and include concise operational guidance."
-            ),
-        )
+    ka_like = [name for name in all_endpoints if "ka-" in name or "knowledge" in name.lower()]
+    if ka_like:
+        selected = sorted(ka_like)[0]
+
+if not selected:
+    raise RuntimeError(
+        "No Knowledge Assistant serving endpoint found. "
+        "Create one first, then set DATABRICKS_KA_ENDPOINT in app.yaml."
     )
-    print(f"Created knowledge assistant: {ka_obj.name}")
 
-parent = ka_obj.name
-source_name = "logistics-documents-volume"
-sources = list(client.knowledge_assistants.list_knowledge_sources(parent=parent))
-source_exists = any(getattr(s, "display_name", None) == source_name for s in sources)
-
-if not source_exists:
-    source = client.knowledge_assistants.create_knowledge_source(
-        parent=parent,
-        knowledge_source=KnowledgeSource(
-            display_name=source_name,
-            description=f"Knowledge files from {VOLUME_PATH}",
-            volume_path=VOLUME_PATH,
-        ),
-    )
-    print(f"Added knowledge source: {source.name}")
-else:
-    print("Knowledge source already exists; skipping create.")
-
-client.knowledge_assistants.sync_knowledge_sources(name=parent)
-print("Triggered knowledge source sync.")
+print(f"Resolved Knowledge Assistant endpoint: {selected}")
+print(f"DATABRICKS_KA_ENDPOINT={selected}")

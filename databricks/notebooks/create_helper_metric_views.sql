@@ -1,18 +1,43 @@
 -- Helper serving views and UC metric views for Logistics Control Center
 
-CREATE SCHEMA IF NOT EXISTS demos.logistics_control_center;
+-- Use existing namespace only.
+USE CATALOG demos;
+USE SCHEMA logistics_control_center;
 
 CREATE OR REPLACE VIEW demos.logistics_control_center.api_shipments AS
-SELECT * FROM logistics_shipments_gold;
+SELECT * FROM demos.logistics_control_center.shipments;
 
 CREATE OR REPLACE VIEW demos.logistics_control_center.api_incidents AS
-SELECT * FROM logistics_incidents_gold;
+SELECT * FROM demos.logistics_control_center.incidents;
 
 CREATE OR REPLACE VIEW demos.logistics_control_center.api_capacity_lanes AS
-SELECT * FROM logistics_capacity_gold;
+SELECT * FROM demos.logistics_control_center.capacity_lanes;
 
 CREATE OR REPLACE VIEW demos.logistics_control_center.api_lane_health AS
-SELECT * FROM logistics_lane_health_gold;
+SELECT
+  id AS laneId,
+  origin,
+  dest,
+  mode,
+  avgDailyVolume,
+  onTimePct,
+  delayMinutes,
+  slaRiskPct,
+  maxCapacity,
+  utilizationPct,
+  availableCapacity,
+  -- Deterministic health score used by dashboards and Genie.
+  ROUND(
+    LEAST(
+      100.0,
+      GREATEST(
+        0.0,
+        (COALESCE(delayMinutes, 0) * 0.6) + (COALESCE(slaRiskPct, 0) * 0.4)
+      )
+    ),
+    2
+  ) AS laneHealthScore
+FROM demos.logistics_control_center.lanes;
 
 CREATE OR REPLACE VIEW demos.logistics_control_center.api_customer_rollup AS
 SELECT
