@@ -8,7 +8,7 @@ SELECT
   s.laneId,
   s.promisedETA,
   CASE
-    WHEN e.event_time IS NOT NULL THEN s.promisedETA + INTERVAL e.eta_delta_minutes MINUTES
+    WHEN e.event_time IS NOT NULL THEN s.promisedETA + e.eta_delta_minutes * INTERVAL '1' MINUTE
     ELSE s.currentETA
   END AS currentETA,
   s.packageCount,

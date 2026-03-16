@@ -863,6 +863,140 @@ The data clearly indicates a systemic issue requiring immediate proactive interv
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Generate FAA Regulatory Documents
+
+# COMMAND ----------
+
+def generate_faa_regulatory_docs():
+    """Generate FAA regulatory context documents for KA retrieval."""
+    docs = []
+
+    docs.append((
+        "faa-regulatory-advisory-weather-diversion.md",
+        """# FAA Regulatory Advisory: Weather Diversions and Operational Control
+
+**Document Type:** Regulatory Advisory  
+**Scope:** Domestic cargo operations (Part 121 style operations)  
+**Last Reviewed:** October 2025
+
+## Purpose
+
+Provide operations teams with practical guidance for weather-related disruptions where lane reliability, dispatch decisions, and customer commitments are affected.
+
+## Key Regulatory Themes
+
+1. **Operational control and dispatch authority**
+   - Dispatch and PIC share responsibility for safe release and continuation decisions.
+   - Route changes must preserve legal fuel planning and alternate requirements.
+
+2. **Weather minima and diversion triggers**
+   - Use destination/alternate weather thresholds defined by company ops specs and FAA-approved procedures.
+   - Trigger proactive reroute when sustained weather risk threatens scheduled arrival windows.
+
+3. **Maintenance and MEL constraints during disruption**
+   - Deferred items under MEL must be re-validated before dispatch when weather/holding risk increases.
+   - If new environmental stressors increase risk, escalate to maintenance control before release.
+
+## Operational Checklist
+
+- Confirm dispatch release validity after route or timing changes.
+- Validate alternate airport coverage for weather and runway constraints.
+- Re-check MEL/CDL impacts before accepting expedited reroute options.
+- Record decision rationale in OCC incident log for compliance traceability.
+
+## Customer Communication Guidance
+
+- State that reroute decisions are made under safety-first regulatory requirements.
+- Provide updated ETA ranges with confidence bands.
+- Avoid promising delivery windows until dispatch legality and slot allocation are confirmed.
+"""
+    ))
+
+    docs.append((
+        "faa-compliance-brief-maintenance-deferrals.md",
+        """# FAA Compliance Brief: Maintenance Deferrals and Dispatch Reliability
+
+**Document Type:** Compliance Brief  
+**Audience:** OCC, maintenance control, line operations  
+**Last Reviewed:** October 2025
+
+## Context
+
+Recurring mechanical events (for example landing gear actuator anomalies) can remain dispatchable under approved MEL conditions, but only with strict interval tracking and procedural controls.
+
+## Required Controls
+
+1. **Deferral tracking**
+   - Track deferral category, interval limits, and repeat findings by tail number.
+   - Flag repeated deferrals on the same ATA chapter for reliability escalation.
+
+2. **Dispatch coordination**
+   - Dispatch cannot assume prior release conditions still apply after major lane disruptions.
+   - Re-evaluate fuel, alternates, and maintenance limitations before release.
+
+3. **Corrective action timing**
+   - If trend thresholds are exceeded, transition from defer-and-monitor to planned corrective maintenance.
+   - Document maintenance decision and risk trade-off in incident notes.
+
+## Practical Trigger Thresholds (Demo Policy)
+
+- 3+ similar maintenance-related delays in 14 days on a lane family.
+- 2+ repeat deferrals on same aircraft affecting dispatch flexibility.
+- Any maintenance issue combined with severe weather forecast on primary route.
+
+## Recommended Response
+
+- Move affected lane to elevated monitoring.
+- Prioritize reroute options with highest schedule robustness, not just shortest ETA.
+- Send proactive customer updates noting safety and compliance constraints.
+"""
+    ))
+
+    docs.append((
+        "faa-ops-specs-cheat-sheet-cargo-reroutes.md",
+        """# FAA Ops Specs Cheat Sheet for Cargo Reroute Decisions
+
+**Document Type:** Quick Reference  
+**Use Case:** Incident response and reroute workflows  
+**Last Reviewed:** October 2025
+
+## Why this matters
+
+Fast reroute decisions are valuable only when they stay compliant with approved operations specifications and dispatch procedures.
+
+## Decision Sequence
+
+1. **Safety and legality gate**
+   - Is the proposed route dispatch-legal under current weather and alternates?
+   - Are crew duty and aircraft limitations still valid?
+
+2. **Reliability gate**
+   - Does route have enough available capacity and acceptable congestion risk?
+   - Is the route resilient to same weather system causing the original disruption?
+
+3. **Customer commitment gate**
+   - Can the route support a realistic ETA commitment?
+   - If not, send uncertainty-aware update immediately.
+
+## Documentation Requirements
+
+- Record original route, selected reroute, and rationale.
+- Capture major constraints (weather, maintenance, ATC, highway closures).
+- Log customer communication timestamp and message summary.
+
+## Escalation Guidance
+
+- Escalate to compliance lead if route legality is uncertain.
+- Escalate to maintenance control when MEL status could affect release.
+- Escalate to customer success for platinum-tier shipment impact.
+"""
+    ))
+
+    return docs
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## Generate and Write All Documents
 
 # COMMAND ----------
@@ -875,6 +1009,7 @@ all_docs.extend(generate_operational_procedures())
 all_docs.extend(generate_sla_documents())
 all_docs.extend(generate_route_guides())
 all_docs.extend(generate_rca_reports())
+all_docs.extend(generate_faa_regulatory_docs())
 
 print(f"Generated {len(all_docs)} documents")
 print("\nWriting documents to UC Volume...\n")
@@ -891,6 +1026,7 @@ print(f"  - Operational Procedures: {len(generate_operational_procedures())}")
 print(f"  - SLA Documents: {len(generate_sla_documents())}")
 print(f"  - Route Guides: {len(generate_route_guides())}")
 print(f"  - RCA Reports: {len(generate_rca_reports())}")
+print(f"  - FAA Regulatory Docs: {len(generate_faa_regulatory_docs())}")
 
 print("\n✓ Document generation complete!")
 print("\nNext steps:")

@@ -1,4 +1,15 @@
-import type { Center, Lane, Incident, Shipment, RerouteSuggestion, Customer, CapacityLane, CapacityAction, AgentActivity, SalesOpportunity } from "../types/domain";
+import type {
+  Center,
+  Lane,
+  Incident,
+  ShipmentLaneMetric,
+  RerouteSuggestion,
+  Customer,
+  CapacityLane,
+  CapacityAction,
+  AgentActivity,
+  SalesOpportunity,
+} from "../types/domain";
 
 // Get backend URL from environment variable
 // In production (Databricks Apps), this will be "/api"
@@ -44,19 +55,6 @@ export async function getIncidents(laneId?: string): Promise<Incident[]> {
   }
 }
 
-export async function getUrgentShipments(laneId: string): Promise<Shipment[]> {
-  await sleep(300);
-  try {
-    const response = await fetch(`${BACKEND_URL}/shipments`);
-    if (!response.ok) throw new Error('Backend unavailable');
-    const all: Shipment[] = await response.json();
-    return all.filter((s) => s.laneId === laneId && s.priority === "HIGH");
-  } catch (error) {
-    console.error('Backend unavailable for urgent shipments:', error);
-    return [];
-  }
-}
-
 export async function getRerouteSuggestions(laneId: string): Promise<RerouteSuggestion[]> {
   await sleep(400);
   try {
@@ -82,14 +80,19 @@ export async function getCustomers(ids?: string[]): Promise<Customer[]> {
   }
 }
 
-export async function getAllShipments(): Promise<Shipment[]> {
-  await sleep(200);
+export async function getShipmentMetrics(laneId?: string, customerId?: string): Promise<ShipmentLaneMetric[]> {
+  await sleep(220);
   try {
-    const response = await fetch(`${BACKEND_URL}/shipments`);
-    if (!response.ok) throw new Error('Backend unavailable');
+    const params = new URLSearchParams();
+    if (laneId) params.set("laneId", laneId);
+    if (customerId) params.set("customerId", customerId);
+    const qs = params.toString();
+    const url = qs ? `${BACKEND_URL}/shipments/metrics?${qs}` : `${BACKEND_URL}/shipments/metrics`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Backend unavailable");
     return response.json();
   } catch (error) {
-    console.error('Backend unavailable for shipments:', error);
+    console.error("Backend unavailable for shipment metrics:", error);
     return [];
   }
 }

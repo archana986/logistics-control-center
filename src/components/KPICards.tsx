@@ -13,14 +13,15 @@ export default function KPICards({ lanes, viewMode = 'congestion' }: KPICardsPro
   const capacityLanes = hasCapacityData ? lanes as CapacityLane[] : [];
   
   // Congestion mode metrics
-  const totalVolume = lanes.reduce((sum, lane) => sum + lane.avgDailyVolume, 0);
-  const avgOnTime = lanes.reduce((sum, lane) => sum + lane.onTimePct, 0) / lanes.length;
+  const laneCount = Math.max(1, lanes.length);
+  const totalVolume = lanes.reduce((sum, lane) => sum + (Number.isFinite(Number(lane.avgDailyVolume)) ? Number(lane.avgDailyVolume) : 0), 0);
+  const avgOnTime = lanes.reduce((sum, lane) => sum + (Number.isFinite(Number(lane.onTimePct)) ? Number(lane.onTimePct) : 0), 0) / laneCount;
   const atRiskCount = lanes.filter(lane => lane.slaRiskPct > 0.1).length;
-  const avgDelay = lanes.reduce((sum, lane) => sum + lane.delayMinutes, 0) / lanes.length;
+  const avgDelay = lanes.reduce((sum, lane) => sum + (Number.isFinite(Number(lane.delayMinutes)) ? Number(lane.delayMinutes) : 0), 0) / laneCount;
   
   // Capacity mode metrics
   const avgUtilization = hasCapacityData 
-    ? capacityLanes.reduce((sum, lane) => sum + lane.utilizationPct, 0) / capacityLanes.length
+    ? capacityLanes.reduce((sum, lane) => sum + (Number.isFinite(Number(lane.utilizationPct)) ? Number(lane.utilizationPct) : 0), 0) / Math.max(1, capacityLanes.length)
     : 0;
   const underutilizedCount = hasCapacityData 
     ? capacityLanes.filter(lane => lane.utilizationPct < 0.70).length

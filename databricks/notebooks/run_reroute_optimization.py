@@ -37,9 +37,17 @@ for lane in lanes:
             continue
 
         coverage_ratio = min(1.0, available / max(1, demand))
-        delta_eta = int(15 + (1.0 - coverage_ratio) * 90)
-        added_cost = round((1.0 - coverage_ratio) * 2200 + (candidate.get("utilizationPct") or 0.8) * 1400, 2)
-        capacity_used_pct = round(min(1.0, demand / max(1, available)) * 100, 2)
+        utilization = float(candidate.get("utilizationPct") or 0.8)
+
+        # Keep values in a realistic demo range (close to public mock data shape).
+        if coverage_ratio >= 0.35:
+            delta_eta = -int(600 + coverage_ratio * 900)  # usually faster than waiting on disrupted lane
+        else:
+            delta_eta = int(90 + (0.35 - coverage_ratio) * 600)  # constrained options add delay
+
+        raw_cost = 1800 + (1.0 - coverage_ratio) * 2600 + utilization * 1000
+        added_cost = round(min(5500.0, max(1500.0, raw_cost)), 2)
+        capacity_used_pct = round(min(95.0, max(10.0, (demand / max(1, available)) * 100)), 2)
 
         strategy = f"Reroute via {candidate['origin']}->{candidate['dest']}"
         notes = (

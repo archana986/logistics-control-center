@@ -4,10 +4,11 @@ Refresh serving Delta tables from pipeline gold materialized views.
 
 CATALOG = "demos"
 SCHEMA = "logistics_control_center"
+GOLD = f"{CATALOG}.{SCHEMA}"
 
 spark.sql(
     f"""
-    INSERT OVERWRITE {CATALOG}.{SCHEMA}.shipments
+    INSERT OVERWRITE {CATALOG}.{SCHEMA}.shipments (trackingId, customerId, priority, laneId, promisedETA, currentETA, packageCount, status)
     SELECT
       trackingId,
       customerId,
@@ -16,15 +17,14 @@ spark.sql(
       promisedETA,
       currentETA,
       packageCount,
-      status,
-      updated_at
-    FROM logistics_shipments_gold
+      status
+    FROM {GOLD}.logistics_shipments_gold
     """
 )
 
 spark.sql(
     f"""
-    INSERT OVERWRITE {CATALOG}.{SCHEMA}.incidents
+    INSERT OVERWRITE {CATALOG}.{SCHEMA}.incidents (id, laneId, timestamp, type, ref, cause, impactMinutes, impactThroughputPct, confidence, active)
     SELECT
       id,
       laneId,
@@ -35,15 +35,14 @@ spark.sql(
       impactMinutes,
       impactThroughputPct,
       confidence,
-      active,
-      current_timestamp() AS created_at
-    FROM logistics_incidents_gold
+      active
+    FROM {GOLD}.logistics_incidents_gold
     """
 )
 
 spark.sql(
     f"""
-    INSERT OVERWRITE {CATALOG}.{SCHEMA}.capacity_lanes
+    INSERT OVERWRITE {CATALOG}.{SCHEMA}.capacity_lanes (id, origin, dest, mode, avgDailyVolume, onTimePct, delayMinutes, slaRiskPct, maxCapacity, utilizationPct, availableCapacity, optimalUtilization)
     SELECT
       id,
       origin,
@@ -56,9 +55,8 @@ spark.sql(
       maxCapacity,
       utilizationPct,
       availableCapacity,
-      optimalUtilization,
-      updated_at
-    FROM logistics_capacity_gold
+      optimalUtilization
+    FROM {GOLD}.logistics_capacity_gold
     """
 )
 

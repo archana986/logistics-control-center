@@ -13,6 +13,19 @@ SELECT * FROM demos.logistics_control_center.incidents;
 CREATE OR REPLACE VIEW demos.logistics_control_center.api_capacity_lanes AS
 SELECT * FROM demos.logistics_control_center.capacity_lanes;
 
+-- Small, query-efficient shipment aggregates for UI lane/customer metrics.
+CREATE OR REPLACE VIEW demos.logistics_control_center.api_shipment_lane_customer_metrics AS
+SELECT
+  laneId,
+  customerId,
+  COUNT(*) AS shipmentCount,
+  SUM(CASE WHEN priority = 'HIGH' THEN 1 ELSE 0 END) AS urgentShipmentCount,
+  SUM(packageCount) AS totalPackages,
+  SUM(CASE WHEN status = 'in_transit' THEN packageCount ELSE 0 END) AS inTransitPackages,
+  SUM(CASE WHEN currentETA > promisedETA THEN 1 ELSE 0 END) AS delayedShipmentCount
+FROM demos.logistics_control_center.api_shipments
+GROUP BY laneId, customerId;
+
 CREATE OR REPLACE VIEW demos.logistics_control_center.api_lane_health AS
 SELECT
   id AS laneId,

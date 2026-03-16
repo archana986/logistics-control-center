@@ -1,25 +1,29 @@
 import { useMemo } from "react";
 import { Package, Clock, MapPin, AlertCircle, TrendingUp, BoxIcon, Loader2 } from "lucide-react";
-import type { Lane, Incident, Shipment } from "@/types/domain";
+import type { Lane, Incident, ShipmentLaneMetric } from "@/types/domain";
 import IncidentTimeline from "./IncidentTimeline";
 import RootCauseAnalysis from "./RootCauseAnalysis";
 
 interface LaneDetailsProps {
   lane: Lane;
   incidents: Incident[];
-  shipments?: Shipment[];
+  shipmentMetrics?: ShipmentLaneMetric[];
   triggerAnalysis?: boolean;
   loadingIncidents?: boolean;
 }
 
-export default function LaneDetails({ lane, incidents, shipments = [], triggerAnalysis = false, loadingIncidents = false }: LaneDetailsProps) {
-  const laneShipments = useMemo(() => {
-    return shipments.filter(s => s.laneId === lane.id);
-  }, [shipments, lane.id]);
+export default function LaneDetails({ lane, incidents, shipmentMetrics = [], triggerAnalysis = false, loadingIncidents = false }: LaneDetailsProps) {
+  const laneMetrics = useMemo(() => {
+    return shipmentMetrics.filter(m => m.laneId === lane.id);
+  }, [shipmentMetrics, lane.id]);
 
-  const urgentShipments = useMemo(() => {
-    return laneShipments.filter(s => s.priority === "HIGH");
-  }, [laneShipments]);
+  const shipmentCount = useMemo(() => {
+    return laneMetrics.reduce((sum, m) => sum + Number(m.shipmentCount || 0), 0);
+  }, [laneMetrics]);
+
+  const urgentShipmentCount = useMemo(() => {
+    return laneMetrics.reduce((sum, m) => sum + Number(m.urgentShipmentCount || 0), 0);
+  }, [laneMetrics]);
 
   const urgentIncidents = useMemo(() => {
     return incidents.filter(i => (i.impactMinutes || 0) > 60 || (i.confidence || 1) < 0.8);
@@ -62,10 +66,10 @@ export default function LaneDetails({ lane, incidents, shipments = [], triggerAn
             <BoxIcon className="h-3 w-3" />
             <span>Shipments</span>
           </div>
-          <div className="text-2xl font-bold">{laneShipments.length}</div>
-          {urgentShipments.length > 0 && (
+          <div className="text-2xl font-bold">{shipmentCount.toLocaleString()}</div>
+          {urgentShipmentCount > 0 && (
             <div className="text-xs text-red-600 font-medium mt-1">
-              {urgentShipments.length} urgent (HIGH)
+              {urgentShipmentCount.toLocaleString()} urgent (HIGH)
             </div>
           )}
         </div>

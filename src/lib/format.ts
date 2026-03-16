@@ -20,7 +20,11 @@ export function formatDuration(minutes: number): string {
 }
 
 export function formatPercent(value: number, decimals: number = 1): string {
-  return `${(value * 100).toFixed(decimals)}%`;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return `0${decimals > 0 ? "." + "0".repeat(decimals) : ""}%`;
+  }
+  return `${(numeric * 100).toFixed(decimals)}%`;
 }
 
 export function formatDate(isoString: string): string {

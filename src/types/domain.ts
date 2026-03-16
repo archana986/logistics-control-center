@@ -49,6 +49,16 @@ export type Shipment = {
   packageCount?: number;
 };
 
+export type ShipmentLaneMetric = {
+  laneId: string;
+  customerId: string;
+  shipmentCount: number;
+  urgentShipmentCount: number;
+  totalPackages: number;
+  inTransitPackages: number;
+  delayedShipmentCount: number;
+};
+
 export type RerouteSuggestion = {
   laneId: string;
   strategy: string;

@@ -1,9 +1,9 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-import { getRerouteSuggestions, getIncidents, getAllShipments } from "@/lib/mockApi";
+import { getRerouteSuggestions, getIncidents, getShipmentMetrics } from "@/lib/mockApi";
 import { formatCurrency, formatDuration } from "@/lib/format";
-import type { RerouteSuggestion, Shipment, Incident } from "@/types/domain";
+import type { RerouteSuggestion, Incident, ShipmentLaneMetric } from "@/types/domain";
 import { ArrowRight, CheckCircle2, DollarSign, Clock, Package, PartyPopper } from "lucide-react";
 
 interface ReroutePanelProps {
@@ -15,7 +15,7 @@ interface ReroutePanelProps {
 
 export default function ReroutePanel({ laneId, open, onOpenChange, onComplete }: ReroutePanelProps) {
   const [suggestions, setSuggestions] = useState<RerouteSuggestion[]>([]);
-  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [shipmentMetrics, setShipmentMetrics] = useState<ShipmentLaneMetric[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<RerouteSuggestion | null>(null);
@@ -31,12 +31,11 @@ export default function ReroutePanel({ laneId, open, onOpenChange, onComplete }:
     setLoading(true);
     Promise.all([
       getRerouteSuggestions(laneId),
-      getAllShipments(),
+      getShipmentMetrics(laneId),
       getIncidents(laneId)
-    ]).then(([sugs, allShips, incs]) => {
+    ]).then(([sugs, metrics, incs]) => {
       setSuggestions(sugs);
-      // Filter to all shipments on this lane (not just HIGH priority)
-      setShipments(allShips.filter(s => s.laneId === laneId));
+      setShipmentMetrics(metrics);
       setIncidents(incs);
       setLoading(false);
     });
@@ -48,15 +47,17 @@ export default function ReroutePanel({ laneId, open, onOpenChange, onComplete }:
   };
   
   // Calculate total packages affected
-  const totalPackages = shipments.reduce((sum, shipment) => sum + (shipment.packageCount || 1), 0);
+  const totalPackages = shipmentMetrics.reduce((sum, metric) => sum + Number(metric.totalPackages || 0), 0);
+  const totalShipments = shipmentMetrics.reduce((sum, metric) => sum + Number(metric.shipmentCount || 0), 0);
   
   // Calculate scaled cost based on actual package count
   const getScaledCost = (baseCost: number) => {
-    if (baseCost === 0) return 0;
+    const normalizedCost = Number(baseCost);
+    if (!Number.isFinite(normalizedCost) || normalizedCost <= 0) return 0;
     // Use the base cost from mock data directly as per-route cost, scaled by package volume
     const basePackageCount = 100;
     const effectivePackages = Math.max(totalPackages, basePackageCount);
-    return Math.round((baseCost / basePackageCount) * effectivePackages);
+    return Math.round((normalizedCost / basePackageCount) * effectivePackages);
   };
   
   const parseRouteDescription = (laneId: string, strategy: string) => {
@@ -278,7 +279,7 @@ export default function ReroutePanel({ laneId, open, onOpenChange, onComplete }:
                   <span className="text-sm font-medium">Affected Packages</span>
                 </div>
                 <div className="text-2xl font-bold">{totalPackages.toLocaleString()}</div>
-                <div className="text-xs text-muted-foreground">Across {shipments.length} shipment{shipments.length !== 1 ? 's' : ''}</div>
+                <div className="text-xs text-muted-foreground">Across {totalShipments.toLocaleString()} shipment{totalShipments !== 1 ? 's' : ''}</div>
               </div>
 
               {/* Reroute Options */}

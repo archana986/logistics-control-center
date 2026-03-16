@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 from typing import Optional
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -40,6 +41,39 @@ SQL_WAREHOUSE_ID = os.getenv("DATABRICKS_SQL_WAREHOUSE_ID")
 workspace_client = None
 logistics_db = None
 agents_client = None
+logger = logging.getLogger("logistics-api")
+if not logger.handlers:
+    logging.basicConfig(level=logging.INFO)
+
+
+def _clip_for_log(value, max_chars: int = 600):
+    """Serialize and truncate payloads for readable API logs."""
+    try:
+        rendered = json.dumps(value, default=str)
+    except Exception:
+        rendered = str(value)
+    if len(rendered) <= max_chars:
+        return rendered
+    return rendered[:max_chars] + "...<truncated>"
+
+
+def _log_api_call(endpoint: str, input_payload=None, output_payload=None, error: Optional[str] = None) -> None:
+    """Structured log for API input/output auditing."""
+    if error:
+        logger.error(
+            "api_call endpoint=%s error=%s input=%s output=%s",
+            endpoint,
+            error,
+            _clip_for_log(input_payload),
+            _clip_for_log(output_payload),
+        )
+        return
+    logger.info(
+        "api_call endpoint=%s input=%s output=%s",
+        endpoint,
+        _clip_for_log(input_payload),
+        _clip_for_log(output_payload),
+    )
 
 def get_databricks_client() -> Optional[WorkspaceClient]:
     """Get or create a Databricks client with proper authentication handling"""
@@ -630,31 +664,53 @@ async def get_centers():
         raise HTTPException(status_code=500, detail=f"Failed to load centers: {str(e)}")
 
 
-@api_app.get("/shipments")
-async def get_shipments(laneId: Optional[str] = Query(None), priority: Optional[str] = Query(None)):
-    """Get all shipments, optionally filtered by lane and/or priority"""
+@api_app.get("/shipments/metrics")
+async def get_shipment_metrics(
+    laneId: Optional[str] = Query(None, description="Optional lane filter"),
+    customerId: Optional[str] = Query(None, description="Optional customer filter"),
+):
+    """Get aggregated shipment metrics by lane/customer."""
     db = get_logistics_db()
     if db:
         try:
-            return db.get_shipments(lane_id=laneId, priority=priority)
+            return db.get_shipment_lane_metrics(lane_id=laneId, customer_id=customerId)
         except Exception as e:
-            print(f"Error querying shipments: {e}")
-            # Fallback to JSON
+            print(f"Error querying shipment metrics: {e}")
+            # Fallback to JSON aggregation
             pass
-    
-    # Fallback to JSON file
+
     try:
         shipments_file = Path(__file__).parent.parent / "public" / "mock" / "shipments.json"
         with open(shipments_file) as f:
-            all_shipments = json.load(f)
-            # Apply filters if provided
+            shipments = json.load(f)
             if laneId:
-                all_shipments = [s for s in all_shipments if s.get("laneId") == laneId]
-            if priority:
-                all_shipments = [s for s in all_shipments if s.get("priority") == priority]
-            return all_shipments
+                shipments = [s for s in shipments if s.get("laneId") == laneId]
+            if customerId:
+                shipments = [s for s in shipments if s.get("customerId") == customerId]
+
+            by_key: dict[tuple[str, str], dict] = {}
+            for s in shipments:
+                key = (s.get("laneId"), s.get("customerId"))
+                if key not in by_key:
+                    by_key[key] = {
+                        "laneId": s.get("laneId"),
+                        "customerId": s.get("customerId"),
+                        "shipmentCount": 0,
+                        "urgentShipmentCount": 0,
+                        "totalPackages": 0,
+                        "inTransitPackages": 0,
+                        "delayedShipmentCount": 0,
+                    }
+                item = by_key[key]
+                package_count = int(s.get("packageCount") or 0)
+                item["shipmentCount"] += 1
+                item["urgentShipmentCount"] += 1 if s.get("priority") == "HIGH" else 0
+                item["totalPackages"] += package_count
+                item["inTransitPackages"] += package_count if s.get("status") == "in_transit" else 0
+
+            return list(by_key.values())
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load shipments: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to load shipment metrics: {str(e)}")
 
 
 @api_app.get("/lanes")
@@ -863,18 +919,22 @@ async def get_sales_opportunities(laneId: str = Query(..., description="Lane ID"
 @api_app.post("/genie/query", response_model=GenieQueryResponse)
 async def query_genie(request: GenieQueryRequest):
     """Query structured data via Genie space"""
+    api_input = {"question": request.question}
     agents = get_agents_client_instance()
     if agents:
         try:
             result = agents.query_genie(request.question)
+            _log_api_call("/genie/query", input_payload=api_input, output_payload=result)
             return GenieQueryResponse(**result)
         except Exception as e:
             print(f"Error querying Genie: {e}")
+            _log_api_call("/genie/query", input_payload=api_input, error=str(e))
             return GenieQueryResponse(
                 answer=f"Error querying Genie: {str(e)}",
                 source="error"
             )
     
+    _log_api_call("/genie/query", input_payload=api_input, output_payload={"source": "error", "answer": "Genie space not configured"})
     return GenieQueryResponse(
         answer="Genie space not configured",
         source="error"
@@ -884,6 +944,7 @@ async def query_genie(request: GenieQueryRequest):
 @api_app.post("/knowledge/query", response_model=KnowledgeQueryResponse)
 async def query_knowledge(request: KnowledgeQueryRequest):
     """Query unstructured docs via Knowledge Assistant endpoint."""
+    api_input = {"question": request.question, "context": request.context}
     
     KA_SERVING_ENDPOINT = os.getenv("DATABRICKS_KA_ENDPOINT", "")
     
@@ -893,9 +954,11 @@ async def query_knowledge(request: KnowledgeQueryRequest):
         try:
             result = agents.query_knowledge_assistant(request.question, request.context)
             if result.get("source") != "error":
+                _log_api_call("/knowledge/query", input_payload=api_input, output_payload=result)
                 return KnowledgeQueryResponse(**result)
         except Exception as e:
             print(f"Error querying via agents client: {e}")
+            _log_api_call("/knowledge/query", input_payload=api_input, error=f"agents_client: {str(e)}")
     
     # Direct fallback: call the KA serving endpoint via raw HTTP (Agent Bricks input format)
     if KA_SERVING_ENDPOINT and not KA_SERVING_ENDPOINT.startswith("<"):
@@ -920,6 +983,11 @@ async def query_knowledge(request: KnowledgeQueryRequest):
                 from backend.agents import _extract_agent_text
                 answer, citations = _extract_agent_text(resp)
                 if answer:
+                    _log_api_call(
+                        "/knowledge/query",
+                        input_payload=api_input,
+                        output_payload={"answer": answer, "citations": citations, "source": "knowledge_assistant"},
+                    )
                     return KnowledgeQueryResponse(
                         answer=answer,
                         citations=citations,
@@ -927,7 +995,13 @@ async def query_knowledge(request: KnowledgeQueryRequest):
                     )
             except Exception as e:
                 print(f"Error calling KA endpoint directly: {e}")
+                _log_api_call("/knowledge/query", input_payload=api_input, error=f"direct_ka: {str(e)}")
     
+    _log_api_call(
+        "/knowledge/query",
+        input_payload=api_input,
+        output_payload={"answer": "Knowledge Assistant not configured", "source": "error"},
+    )
     return KnowledgeQueryResponse(
         answer="Knowledge Assistant not configured",
         source="error"
@@ -937,18 +1011,26 @@ async def query_knowledge(request: KnowledgeQueryRequest):
 @api_app.post("/supervisor/query", response_model=SupervisorQueryResponse)
 async def query_supervisor(request: SupervisorQueryRequest):
     """Route complex queries through Multi-Agent Supervisor"""
+    api_input = {"message": request.message, "context": request.context}
     agents = get_agents_client_instance()
     if agents:
         try:
             result = agents.query_supervisor(request.message, request.context)
+            _log_api_call("/supervisor/query", input_payload=api_input, output_payload=result)
             return SupervisorQueryResponse(**result)
         except Exception as e:
             print(f"Error querying Supervisor: {e}")
+            _log_api_call("/supervisor/query", input_payload=api_input, error=str(e))
             return SupervisorQueryResponse(
                 message=f"Error querying Supervisor: {str(e)}",
                 source="error"
             )
     
+    _log_api_call(
+        "/supervisor/query",
+        input_payload=api_input,
+        output_payload={"message": "Multi-Agent Supervisor not configured", "source": "error"},
+    )
     return SupervisorQueryResponse(
         message="Multi-Agent Supervisor not configured",
         source="error"

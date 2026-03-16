@@ -20,10 +20,20 @@ class LogisticsDB:
         self.schema = os.getenv("DATABRICKS_SCHEMA", "logistics_control_center")
 
     @staticmethod
+    def _normalize_type_name(type_name: str) -> str:
+        """Normalize SDK enum/string type names to SQL-ish tokens."""
+        normalized = str(type_name or "STRING").upper()
+        if "." in normalized:
+            normalized = normalized.split(".")[-1]
+        if "(" in normalized:
+            normalized = normalized.split("(")[0]
+        return normalized
+
+    @staticmethod
     def _parse_value(val: str, type_name: str):
         if val is None:
             return None
-        type_upper = (type_name or "").upper()
+        type_upper = LogisticsDB._normalize_type_name(type_name)
         if type_upper in ("INT", "INTEGER", "BIGINT", "SMALLINT", "TINYINT", "LONG"):
             try:
                 return int(val)
@@ -60,9 +70,18 @@ class LogisticsDB:
         if not execution.result or not execution.result.data_array:
             return []
 
-        columns = execution.result.manifest.schema.columns
-        col_names = [col.name for col in columns]
-        col_types = [getattr(col, "type_name", "STRING") or "STRING" for col in columns]
+        # Manifest (schema) is on the top-level StatementResponse, not on result (ResultData)
+        manifest = getattr(execution, "manifest", None)
+        if manifest and manifest.schema and manifest.schema.columns:
+            columns = manifest.schema.columns
+            col_names = [col.name for col in columns]
+            col_types = [self._normalize_type_name(getattr(col, "type_name", "STRING") or "STRING") for col in columns]
+        else:
+            # Fallback when schema metadata is not returned
+            first_row = execution.result.data_array[0]
+            col_names = [f"col_{i}" for i in range(len(first_row))]
+            col_types = ["STRING"] * len(col_names)
+
         output: list[dict] = []
         for row in execution.result.data_array:
             parsed = {}
@@ -94,22 +113,6 @@ class LogisticsDB:
             FROM {self._tbl('incidents')}
             {where_clause}
             ORDER BY timestamp DESC
-            """
-        )
-
-    def get_shipments(self, lane_id: Optional[str] = None, priority: Optional[str] = None) -> list[dict]:
-        conditions: list[str] = []
-        if lane_id:
-            conditions.append(f"laneId = '{self._esc(lane_id)}'")
-        if priority:
-            conditions.append(f"priority = '{self._esc(priority)}'")
-        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-        return self._execute_query(
-            f"""
-            SELECT trackingId, customerId, priority, laneId, promisedETA, currentETA, packageCount, status
-            FROM {self._tbl('shipments')}
-            {where_clause}
-            ORDER BY promisedETA
             """
         )
 
@@ -157,6 +160,29 @@ class LogisticsDB:
                    maxCapacity, utilizationPct, availableCapacity, optimalUtilization
             FROM {self._tbl('capacity_lanes')}
             ORDER BY id
+            """
+        )
+
+    def get_shipment_lane_metrics(self, lane_id: Optional[str] = None, customer_id: Optional[str] = None) -> list[dict]:
+        conditions: list[str] = []
+        if lane_id:
+            conditions.append(f"laneId = '{self._esc(lane_id)}'")
+        if customer_id:
+            conditions.append(f"customerId = '{self._esc(customer_id)}'")
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        return self._execute_query(
+            f"""
+            SELECT
+              laneId,
+              customerId,
+              shipmentCount,
+              urgentShipmentCount,
+              totalPackages,
+              inTransitPackages,
+              delayedShipmentCount
+            FROM {self._tbl('api_shipment_lane_customer_metrics')}
+            {where_clause}
+            ORDER BY laneId, customerId
             """
         )
 

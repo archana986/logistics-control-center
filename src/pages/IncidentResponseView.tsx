@@ -5,9 +5,9 @@ import KPICards from "@/components/KPICards";
 import LaneDetails from "@/components/LaneDetails";
 import ReroutePanel from "@/components/ReroutePanel";
 import GenAIDrawer from "@/components/GenAIDrawer";
-import { getCenters, getLanes, getIncidents, getAllShipments } from "@/lib/mockApi";
+import { getCenters, getLanes, getIncidents, getShipmentMetrics } from "@/lib/mockApi";
 import { Button } from "@/components/ui/button";
-import type { Center, Lane, Incident, Shipment } from "@/types/domain";
+import type { Center, Lane, Incident, ShipmentLaneMetric } from "@/types/domain";
 import { Sparkles, Filter, Brain, CheckCircle } from "lucide-react";
 import databricksLogo from "@/assets/databricks_logo.svg";
 import { clearAllSessionState } from "@/lib/sessionState";
@@ -24,7 +24,7 @@ export default function IncidentResponseView() {
   const [loading, setLoading] = useState(true);
   const [riskFilter, setRiskFilter] = useState<string>("");
   const [customerFilter, setCustomerFilter] = useState<string>("");
-  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [shipmentMetrics, setShipmentMetrics] = useState<ShipmentLaneMetric[]>([]);
   const [triggerAnalysis, setTriggerAnalysis] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [loadingIncidents, setLoadingIncidents] = useState(false);
@@ -54,11 +54,11 @@ export default function IncidentResponseView() {
     Promise.all([
       getCenters(), 
       getLanes(),
-      getAllShipments()
-    ]).then(([centersData, lanesData, shipmentsData]) => {
+      getShipmentMetrics()
+    ]).then(([centersData, lanesData, shipmentMetricsData]) => {
       setCenters(centersData);
       setLanes(lanesData);
-      setShipments(shipmentsData);
+      setShipmentMetrics(shipmentMetricsData);
       setLoading(false);
     });
   }, []);
@@ -85,13 +85,13 @@ export default function IncidentResponseView() {
   // Get unique customers from shipments
   const uniqueCustomers = useMemo(() => {
     const customerSet = new Set<string>();
-    shipments.forEach(shipment => {
-      if (shipment.customerId) {
-        customerSet.add(shipment.customerId);
+    shipmentMetrics.forEach(metric => {
+      if (metric.customerId) {
+        customerSet.add(metric.customerId);
       }
     });
     return Array.from(customerSet).sort();
-  }, [shipments]);
+  }, [shipmentMetrics]);
 
   // Filter lanes based on risk level and customer
   const filteredLanes = useMemo(() => {
@@ -117,15 +117,15 @@ export default function IncidentResponseView() {
     // Apply customer filter
     if (customerFilter) {
       const customerLaneIds = new Set(
-        shipments
-          .filter(s => s.customerId === customerFilter)
-          .map(s => s.laneId)
+        shipmentMetrics
+          .filter(m => m.customerId === customerFilter && m.shipmentCount > 0)
+          .map(m => m.laneId)
       );
       filtered = filtered.filter(lane => customerLaneIds.has(lane.id));
     }
     
     return filtered;
-  }, [lanes, riskFilter, customerFilter, shipments]);
+  }, [lanes, riskFilter, customerFilter, shipmentMetrics]);
 
   // Load incidents when lane is selected
   useEffect(() => {
@@ -287,7 +287,7 @@ export default function IncidentResponseView() {
           <div className="flex-1 overflow-y-auto p-4">
             {selectedLane ? (
               <div className="space-y-4">
-                <LaneDetails lane={selectedLane} incidents={incidents} shipments={shipments} triggerAnalysis={triggerAnalysis} loadingIncidents={loadingIncidents} />
+                <LaneDetails lane={selectedLane} incidents={incidents} shipmentMetrics={shipmentMetrics} triggerAnalysis={triggerAnalysis} loadingIncidents={loadingIncidents} />
                 
                 {/* Action Buttons */}
                 <div className="space-y-2">
