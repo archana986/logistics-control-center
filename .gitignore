@@ -17,6 +17,9 @@ dist-ssr
 .env.local
 .env.production
 
+# Test output
+test-results/
+
 # Python
 __pycache__/
 *.py[cod]
