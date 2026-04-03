@@ -37,6 +37,9 @@ _archive/
 # Local testing config (your actual parameters - DO NOT COMMIT)
 .local/
 
+# Databricks bundle state (contains workspace-specific paths)
+.databricks/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
