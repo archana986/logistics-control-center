@@ -55,22 +55,26 @@ AI-powered logistics incident response application built on Databricks. Features
 - SQL Warehouse (Serverless recommended)
 - A catalog where you have `CREATE SCHEMA` permission
 
-### Deployment (3 Phases)
+### Deployment (5 Commands)
 
 ```bash
-# Phase 1: Deploy infrastructure
+# 1. Edit databricks.yml with your workspace values (profile, warehouse_id, catalog)
+
+# 2. Deploy infrastructure
 databricks bundle deploy -t dev
 
-# Phase 2: Create data and agents
+# 3. Run setup job (creates data + agents)
 databricks bundle run logistics_setup -t dev
 # Note the GENIE_SPACE_ID and KA_ENDPOINT from output
 
-# Phase 3: Deploy app (after updating databricks.yml with IDs)
+# 4. Add agent IDs to databricks.yml and app.yaml, then redeploy
 databricks bundle deploy -t dev
+
+# 5. Grant permissions and you're done!
 databricks bundle run logistics_app_permissions -t dev
 ```
 
-**See [SETUP.md](SETUP.md) for detailed step-by-step instructions.**
+**No YAML commenting/uncommenting required.** See [SETUP.md](SETUP.md) for details.
 
 ## Project Structure
 
