@@ -62,30 +62,21 @@ AI-powered logistics incident response application built on Databricks. Features
 2. Paste URL: `https://github.com/archana-krishnamurthy_data/logistics-control-center`
 3. Click **Create Repo**
 
-### Deploy (5 Steps)
+### Deploy (6 Steps)
 
-```bash
-# 1. Edit databricks.yml and app.yaml in Databricks UI
-#    Update: warehouse_id, catalog (leave genie_space_id and ka_endpoint empty)
+| Step | Action | Where |
+|------|--------|-------|
+| 1 | Clone repo to Databricks | UI: Workspace → Repos → Add Repo |
+| 2 | Edit `databricks.yml` and `app.yaml` with warehouse_id, catalog | Databricks UI |
+| 3 | `databricks bundle deploy -t dev` | Terminal |
+| 4 | `databricks bundle run logistics_setup -t dev` (~10 min) | Terminal |
+| 5 | Add genie_space_id and ka_endpoint from job output to both files | Databricks UI |
+| 6 | `databricks bundle deploy -t dev` then `databricks bundle run logistics_app_permissions -t dev` | Terminal |
 
-# 2. Deploy infrastructure
-databricks bundle deploy -t dev
+**No YAML commenting/uncommenting required.** Just fill in values and deploy.
 
-# 3. Run setup job (creates data + agents, ~10 min)
-databricks bundle run logistics_setup -t dev
-# Note the GENIE_SPACE_ID and KA_ENDPOINT from output
-
-# 4. Add agent IDs to databricks.yml and app.yaml, then redeploy
-databricks bundle deploy -t dev
-
-# 5. Grant permissions and you're done!
-databricks bundle run logistics_app_permissions -t dev
-```
-
-**No YAML commenting/uncommenting required.** Just fill in values.
-
-- [SETUP.md](SETUP.md) - Step-by-step deployment guide
-- [CONFIG.md](CONFIG.md) - Detailed explanation of all configuration files
+- [SETUP.md](SETUP.md) - Detailed step-by-step guide
+- [CONFIG.md](CONFIG.md) - Configuration file reference
 
 ## Project Structure
 

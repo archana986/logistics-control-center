@@ -70,24 +70,21 @@ targets:
     mode: development
     default: true
     workspace:
-      # ┌─────────────────────────────────────────────────────────────────────┐
-      # │ STEP 1: Set your Databricks CLI profile                            │
-      # │ Run 'databricks auth profiles' to list available profiles          │
-      # └─────────────────────────────────────────────────────────────────────┘
-      profile: <YOUR_DATABRICKS_PROFILE>
+      # Use DEFAULT when deploying from Databricks workspace
+      # Change to your CLI profile name if deploying from local machine
+      profile: DEFAULT
     variables:
       # ┌─────────────────────────────────────────────────────────────────────┐
-      # │ STEP 1: Set your workspace values                                  │
+      # │ STEP 2: Replace these with your workspace values                   │
       # └─────────────────────────────────────────────────────────────────────┘
-      warehouse_id: "<YOUR_WAREHOUSE_ID>"
-      catalog: "<YOUR_CATALOG>"
+      warehouse_id: "<YOUR_WAREHOUSE_ID>"      # SQL Warehouses → Copy ID
+      catalog: "<YOUR_CATALOG>"                 # Your Unity Catalog name
       schema: "logistics_control_center"
       # ┌─────────────────────────────────────────────────────────────────────┐
-      # │ STEP 2: Add these AFTER running 'logistics_setup' job              │
-      # │ Leave empty for first deploy, fill in after setup job completes    │
+      # │ STEP 5: Add these AFTER running 'logistics_setup' job              │
       # └─────────────────────────────────────────────────────────────────────┘
-      genie_space_id: ""
-      ka_endpoint: ""
+      genie_space_id: ""                        # From setup job output
+      ka_endpoint: ""                           # From setup job output
 
 # =============================================================================
 # RESOURCES - All resources defined (app deploys when IDs are provided)

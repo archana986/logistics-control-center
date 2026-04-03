@@ -43,28 +43,21 @@ env:
     value: databricks-meta-llama-3-1-70b-instruct
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # Unity Catalog Configuration
+  # Unity Catalog Configuration (STEP 2: Update these)
   # ─────────────────────────────────────────────────────────────────────────────
-  # ╔═══════════════════════════════════════════════════════════════════════════╗
-  # ║ CUSTOMER: Update these values to match your workspace                     ║
-  # ╚═══════════════════════════════════════════════════════════════════════════╝
   - name: DATABRICKS_SQL_WAREHOUSE_ID
-    value: "<YOUR_WAREHOUSE_ID>"
+    value: "<YOUR_WAREHOUSE_ID>"               # Same as databricks.yml
   - name: DATABRICKS_CATALOG
-    value: "<YOUR_CATALOG>"
+    value: "<YOUR_CATALOG>"                    # Same as databricks.yml
   - name: DATABRICKS_SCHEMA
     value: "logistics_control_center"
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # Agent Bricks Configuration (from Phase 2 setup job output)
+  # Agent Configuration (STEP 5: Update after running setup job)
   # ─────────────────────────────────────────────────────────────────────────────
-  # ╔═══════════════════════════════════════════════════════════════════════════╗
-  # ║ CUSTOMER: Update these after running the logistics_setup job              ║
-  # ║ Find values in the job output or Databricks UI                            ║
-  # ╚═══════════════════════════════════════════════════════════════════════════╝
   - name: DATABRICKS_GENIE_SPACE_ID
-    value: "<YOUR_GENIE_SPACE_ID>"
+    value: ""                                  # From setup job output
   - name: DATABRICKS_KA_ENDPOINT
-    value: "<YOUR_KA_ENDPOINT>"
+    value: ""                                  # From setup job output
   - name: DATABRICKS_SUPERVISOR_ENDPOINT
     value: ""
