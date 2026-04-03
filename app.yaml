@@ -1,9 +1,22 @@
-# Databricks App Configuration
-# This app has a React frontend and a Python FastAPI backend
-# Following the pattern from: https://www.databricks.com/blog/building-databricks-apps-react-and-mosaic-ai-agents-enterprise-chat-solutions
+# =============================================================================
+# Databricks App Configuration - Logistics Control Center
+# =============================================================================
+# This file defines how the Databricks App runs in the workspace.
+#
+# Architecture:
+#   - React frontend (Vite build → static files)
+#   - Python FastAPI backend (API, AI agents, database queries)
+#   - Gunicorn + Uvicorn (production ASGI server)
+#
+# Startup Sequence:
+#   1. pip install -r requirements.txt
+#   2. npm install && npm run build
+#   3. gunicorn starts FastAPI on port 8000
+#
+# SETUP: Update the environment variables below with your values.
+#        See SETUP.md for detailed instructions.
+# =============================================================================
 
-# Command to start the application using Gunicorn with Uvicorn workers
-# First build the frontend, then start the backend which serves both API and static files
 command: 
   - "sh"
   - "-c"
@@ -13,27 +26,45 @@ command:
     npm run build && \
     gunicorn backend.main:app -w 2 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 
-# Environment variables
 env:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Build Configuration (usually no changes needed)
+  # ─────────────────────────────────────────────────────────────────────────────
   - name: NODE_ENV
     value: production
-  - name: DATABRICKS_MODEL_ENDPOINT
-    value: databricks-gpt-oss-120b
   - name: VITE_BACKEND_URL
     value: /api
-  # SQL Warehouse ID - set this to your SQL Warehouse ID
-  - name: DATABRICKS_SQL_WAREHOUSE_ID
-    value: "2fe54b32b36329be"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # AI Model Configuration
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Foundation Model for generating customer communications
+  - name: DATABRICKS_MODEL_ENDPOINT
+    value: databricks-meta-llama-3-1-70b-instruct
+
+  # ─────────────────────────────────────────────────────────────────────────────
   # Unity Catalog Configuration
+  # ─────────────────────────────────────────────────────────────────────────────
+  # ╔═══════════════════════════════════════════════════════════════════════════╗
+  # ║ CUSTOMER: Update these values to match your workspace                     ║
+  # ╚═══════════════════════════════════════════════════════════════════════════╝
+  - name: DATABRICKS_SQL_WAREHOUSE_ID
+    value: "<YOUR_WAREHOUSE_ID>"
   - name: DATABRICKS_CATALOG
-    value: demos
+    value: "<YOUR_CATALOG>"
   - name: DATABRICKS_SCHEMA
-    value: logistics_control_center
-  # Agent Bricks Configuration - set these after creating agents
+    value: "logistics_control_center"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Agent Bricks Configuration (from Phase 2 setup job output)
+  # ─────────────────────────────────────────────────────────────────────────────
+  # ╔═══════════════════════════════════════════════════════════════════════════╗
+  # ║ CUSTOMER: Update these after running the logistics_setup job              ║
+  # ║ Find values in the job output or Databricks UI                            ║
+  # ╚═══════════════════════════════════════════════════════════════════════════╝
   - name: DATABRICKS_GENIE_SPACE_ID
-    value: "01f120920e7c116990a980acfaf405ee"
+    value: "<YOUR_GENIE_SPACE_ID>"
   - name: DATABRICKS_KA_ENDPOINT
-    value: "ka-3c254141-endpoint"
+    value: "<YOUR_KA_ENDPOINT>"
   - name: DATABRICKS_SUPERVISOR_ENDPOINT
     value: ""
-

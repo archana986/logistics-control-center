@@ -1,3 +1,13 @@
+/**
+ * Tailwind CSS Configuration
+ * 
+ * Purpose: Configures Tailwind CSS utility classes for the React frontend.
+ * - Defines custom color scheme using CSS variables (supports dark mode)
+ * - Extends border-radius, animations, and container settings
+ * - Uses tailwindcss-animate plugin for smooth UI transitions
+ * 
+ * Usage: Tailwind scans src/**/*.tsx for class names and generates CSS.
+ */
 import type { Config } from 'tailwindcss'
 
 export default {

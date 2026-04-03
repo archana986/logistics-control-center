@@ -1,3 +1,6 @@
+-- Gold layer: Business-ready views joining base tables with stream aggregates
+-- Uses LIVE.table_name for tables within the same pipeline
+
 CREATE OR REFRESH MATERIALIZED VIEW logistics_shipments_gold
 COMMENT "Serving shipment status with latest event deltas applied"
 AS
@@ -14,7 +17,7 @@ SELECT
   s.packageCount,
   COALESCE(e.status, s.status) AS status,
   current_timestamp() AS updated_at
-FROM demos.logistics_control_center.shipments s
+FROM LIVE.shipments s
 LEFT JOIN mv_latest_shipment_events e ON s.trackingId = e.trackingId;
 
 CREATE OR REFRESH MATERIALIZED VIEW logistics_incidents_gold
@@ -31,7 +34,7 @@ SELECT
   i.impactThroughputPct,
   i.confidence,
   COALESCE(e.active, i.active) AS active
-FROM demos.logistics_control_center.incidents i
+FROM LIVE.incidents i
 LEFT JOIN mv_latest_incident_events e ON i.id = e.incident_id;
 
 CREATE OR REFRESH MATERIALIZED VIEW logistics_capacity_gold
@@ -51,7 +54,7 @@ SELECT
   CAST(COALESCE(e.availableCapacity, c.availableCapacity) AS INT) AS availableCapacity,
   c.optimalUtilization,
   current_timestamp() AS updated_at
-FROM demos.logistics_control_center.capacity_lanes c
+FROM LIVE.capacity_lanes c
 LEFT JOIN mv_latest_capacity_events e ON c.id = e.laneId;
 
 CREATE OR REFRESH MATERIALIZED VIEW logistics_lane_health_gold
@@ -84,5 +87,5 @@ SELECT
     ) AS DOUBLE
   ) AS laneHealthScore,
   current_timestamp() AS updated_at
-FROM demos.logistics_control_center.lanes l
+FROM LIVE.lanes l
 LEFT JOIN latest_sensor ls ON l.id = ls.laneId AND ls.rn = 1;

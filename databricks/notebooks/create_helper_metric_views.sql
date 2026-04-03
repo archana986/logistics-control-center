@@ -1,20 +1,23 @@
 -- Helper serving views and UC metric views for Logistics Control Center
+-- Parameters: catalog, schema (passed from databricks.yml as named parameters)
+-- Note: CREATE VIEW doesn't support IDENTIFIER() so we use USE CATALOG/SCHEMA for context
 
--- Use existing namespace only.
-USE CATALOG demos;
-USE SCHEMA logistics_control_center;
+-- Set catalog and schema context
+USE CATALOG IDENTIFIER(:catalog);
+USE SCHEMA IDENTIFIER(:schema);
 
-CREATE OR REPLACE VIEW demos.logistics_control_center.api_shipments AS
-SELECT * FROM demos.logistics_control_center.shipments;
+-- API views use unqualified names since we're in the correct schema context
+CREATE OR REPLACE VIEW api_shipments AS
+SELECT * FROM shipments;
 
-CREATE OR REPLACE VIEW demos.logistics_control_center.api_incidents AS
-SELECT * FROM demos.logistics_control_center.incidents;
+CREATE OR REPLACE VIEW api_incidents AS
+SELECT * FROM incidents;
 
-CREATE OR REPLACE VIEW demos.logistics_control_center.api_capacity_lanes AS
-SELECT * FROM demos.logistics_control_center.capacity_lanes;
+CREATE OR REPLACE VIEW api_capacity_lanes AS
+SELECT * FROM capacity_lanes;
 
--- Small, query-efficient shipment aggregates for UI lane/customer metrics.
-CREATE OR REPLACE VIEW demos.logistics_control_center.api_shipment_lane_customer_metrics AS
+-- Small, query-efficient shipment aggregates for UI lane/customer metrics
+CREATE OR REPLACE VIEW api_shipment_lane_customer_metrics AS
 SELECT
   laneId,
   customerId,
@@ -23,10 +26,10 @@ SELECT
   SUM(packageCount) AS totalPackages,
   SUM(CASE WHEN status = 'in_transit' THEN packageCount ELSE 0 END) AS inTransitPackages,
   SUM(CASE WHEN currentETA > promisedETA THEN 1 ELSE 0 END) AS delayedShipmentCount
-FROM demos.logistics_control_center.api_shipments
+FROM api_shipments
 GROUP BY laneId, customerId;
 
-CREATE OR REPLACE VIEW demos.logistics_control_center.api_lane_health AS
+CREATE OR REPLACE VIEW api_lane_health AS
 SELECT
   id AS laneId,
   origin,
@@ -39,7 +42,6 @@ SELECT
   maxCapacity,
   utilizationPct,
   availableCapacity,
-  -- Deterministic health score used by dashboards and Genie.
   ROUND(
     LEAST(
       100.0,
@@ -50,26 +52,27 @@ SELECT
     ),
     2
   ) AS laneHealthScore
-FROM demos.logistics_control_center.lanes;
+FROM lanes;
 
-CREATE OR REPLACE VIEW demos.logistics_control_center.api_customer_rollup AS
+CREATE OR REPLACE VIEW api_customer_rollup AS
 SELECT
   c.id AS customer_id,
   c.name AS customer_name,
   c.tier,
   COUNT(DISTINCT s.trackingId) AS shipment_count,
   SUM(CASE WHEN s.status = 'in_transit' THEN s.packageCount ELSE 0 END) AS in_transit_packages
-FROM demos.logistics_control_center.customers c
-LEFT JOIN demos.logistics_control_center.api_shipments s ON c.id = s.customerId
+FROM customers c
+LEFT JOIN api_shipments s ON c.id = s.customerId
 GROUP BY c.id, c.name, c.tier;
 
-CREATE OR REPLACE VIEW demos.logistics_control_center.network_metrics
+-- Metric views with YAML use unqualified source names (within same schema context)
+CREATE OR REPLACE VIEW network_metrics
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
   comment: "Top-level network KPIs for control tower operations."
-  source: demos.logistics_control_center.api_lane_health
+  source: api_lane_health
   dimensions:
     - name: Lane ID
       expr: laneId
@@ -90,13 +93,13 @@ AS $$
       expr: SUM(CASE WHEN laneHealthScore >= 70 THEN 1 ELSE 0 END)
 $$;
 
-CREATE OR REPLACE VIEW demos.logistics_control_center.shipment_metrics
+CREATE OR REPLACE VIEW shipment_metrics
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
   comment: "Shipment service-level metrics."
-  source: demos.logistics_control_center.api_shipments
+  source: api_shipments
   dimensions:
     - name: Tracking ID
       expr: trackingId
@@ -117,13 +120,13 @@ AS $$
       expr: SUM(CASE WHEN currentETA > promisedETA THEN 1 ELSE 0 END)
 $$;
 
-CREATE OR REPLACE VIEW demos.logistics_control_center.incident_metrics
+CREATE OR REPLACE VIEW incident_metrics
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
   comment: "Incident severity and disruption metrics."
-  source: demos.logistics_control_center.api_incidents
+  source: api_incidents
   dimensions:
     - name: Incident ID
       expr: id
@@ -144,13 +147,13 @@ AS $$
       expr: AVG(confidence)
 $$;
 
-CREATE OR REPLACE VIEW demos.logistics_control_center.capacity_metrics
+CREATE OR REPLACE VIEW capacity_metrics
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
   comment: "Lane capacity and utilization metrics."
-  source: demos.logistics_control_center.api_capacity_lanes
+  source: api_capacity_lanes
   dimensions:
     - name: Lane ID
       expr: id

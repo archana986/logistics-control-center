@@ -31,6 +31,12 @@ env/
 ENV/
 .venv
 
+# Archive (testing artifacts, old files, examples)
+_archive/
+
+# Local testing config (your actual parameters - DO NOT COMMIT)
+.local/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
