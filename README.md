@@ -51,28 +51,27 @@ AI-powered logistics incident response application built on Databricks. Features
 ### Prerequisites
 
 - Databricks workspace with Unity Catalog enabled
-- Databricks CLI installed and authenticated
 - SQL Warehouse (Serverless recommended)
 - A catalog where you have `CREATE SCHEMA` permission
-- Git installed
 
-### Clone the Repository
+**No local setup required** - everything runs in Databricks.
+
+### Clone to Databricks Workspace
+
+1. In Databricks UI: **Workspace** → **Repos** → **Add Repo**
+2. Paste URL: `https://github.com/archana-krishnamurthy_data/logistics-control-center`
+3. Click **Create Repo**
+
+### Deploy (5 Steps)
 
 ```bash
-# Clone the repo
-git clone https://github.com/archana-krishnamurthy_data/logistics-control-center.git
-cd logistics-control-center
-```
-
-### Deployment (5 Commands)
-
-```bash
-# 1. Edit databricks.yml with your workspace values (profile, warehouse_id, catalog)
+# 1. Edit databricks.yml and app.yaml in Databricks UI
+#    Update: warehouse_id, catalog (leave genie_space_id and ka_endpoint empty)
 
 # 2. Deploy infrastructure
 databricks bundle deploy -t dev
 
-# 3. Run setup job (creates data + agents)
+# 3. Run setup job (creates data + agents, ~10 min)
 databricks bundle run logistics_setup -t dev
 # Note the GENIE_SPACE_ID and KA_ENDPOINT from output
 
@@ -83,7 +82,7 @@ databricks bundle deploy -t dev
 databricks bundle run logistics_app_permissions -t dev
 ```
 
-**No YAML commenting/uncommenting required.** 
+**No YAML commenting/uncommenting required.** Just fill in values.
 
 - [SETUP.md](SETUP.md) - Step-by-step deployment guide
 - [CONFIG.md](CONFIG.md) - Detailed explanation of all configuration files
