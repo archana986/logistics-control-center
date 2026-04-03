@@ -66,21 +66,26 @@ First production-ready release of the Logistics Control Center - an AI-powered l
 
 ### Deployment
 
-#### Three-Phase Deployment Model
-1. **Phase 1** - Deploy infrastructure (pipeline, jobs)
-2. **Phase 2** - Create data and AI agents (setup job)
-3. **Phase 3** - Deploy application with agent IDs
+#### Simplified 5-Step Deployment
+No YAML commenting/uncommenting required. Just fill in values and deploy:
+
+1. **Configure** - Update `databricks.yml` with workspace values
+2. **Deploy** - `databricks bundle deploy -t dev`
+3. **Setup** - `databricks bundle run logistics_setup -t dev`
+4. **Add IDs** - Update with genie_space_id and ka_endpoint from job output
+5. **Finish** - `databricks bundle deploy && databricks bundle run logistics_app_permissions`
 
 #### Jobs Included
-- `logistics-control-center-setup` - One-time initialization
+- `logistics-control-center-setup` - One-time initialization (creates data, agents)
 - `logistics-control-center-streaming-refresh` - Scheduled updates (5 min)
-- `logistics-control-center-app-permissions` - UC access grants
+- `logistics-control-center-app-permissions` - UC access grants for app
 
 ### Configuration
 
 #### Parameterized Deployment
-- All customer-specific values externalized to `databricks.yml`
-- Environment variables in `app.yaml` for runtime config
+- All customer-specific values in `targets.dev.variables` section
+- Same values mirrored in `app.yaml` environment variables
+- No need to edit YAML structure - just fill in values
 - Supports multiple deployment targets (dev, prod)
 
 #### Serverless Compatible

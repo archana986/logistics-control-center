@@ -74,7 +74,10 @@ databricks bundle deploy -t dev
 databricks bundle run logistics_app_permissions -t dev
 ```
 
-**No YAML commenting/uncommenting required.** See [SETUP.md](SETUP.md) for details.
+**No YAML commenting/uncommenting required.** 
+
+- [SETUP.md](SETUP.md) - Step-by-step deployment guide
+- [CONFIG.md](CONFIG.md) - Detailed explanation of all configuration files
 
 ## Project Structure
 
@@ -115,13 +118,47 @@ logistics-control-center/
 
 ## Configuration Files
 
-| File | Purpose |
-|------|---------|
-| `databricks.yml` | Asset Bundle definition - pipelines, jobs, app |
-| `app.yaml` | App runtime config - environment variables |
-| `vite.config.ts` | Vite build configuration for React |
-| `tailwind.config.ts` | Tailwind CSS theme and utilities |
-| `tsconfig.json` | TypeScript compiler settings |
+### Databricks Configuration
+
+| File | Purpose | Customer Edits? |
+|------|---------|-----------------|
+| `databricks.yml` | Asset Bundle definition - pipelines, jobs, app, variables | **Yes** - update `targets.dev` section |
+| `app.yaml` | App runtime config - environment variables for the running app | **Yes** - update env values |
+
+### Frontend Build Configuration
+
+| File | Purpose | Customer Edits? |
+|------|---------|-----------------|
+| `package.json` | Node.js dependencies and build scripts | No |
+| `vite.config.ts` | Vite bundler - handles React builds, path aliases | No |
+| `tailwind.config.ts` | Tailwind CSS theme, colors, animations | No |
+| `postcss.config.js` | PostCSS plugins for CSS processing | No |
+| `tsconfig.json` | TypeScript project references (points to app/node configs) | No |
+| `tsconfig.app.json` | TypeScript settings for React source code | No |
+| `tsconfig.node.json` | TypeScript settings for Vite config | No |
+
+### What Each Config Does
+
+**`package.json`** - Node.js project manifest
+- Defines dependencies (React, Vite, Tailwind, deck.gl for maps)
+- Build scripts: `npm run dev` (local), `npm run build` (production)
+- No customer changes needed
+
+**`tsconfig.json`** - TypeScript root config
+- References `tsconfig.app.json` for source code
+- References `tsconfig.node.json` for build tools
+- Enables project references for faster builds
+
+**`tsconfig.app.json`** - Frontend TypeScript settings
+- Target: ES2022 for modern JavaScript
+- Path alias: `@/*` maps to `./src/*` for cleaner imports
+- Strict mode enabled for type safety
+
+**`tsconfig.node.json`** - Build tooling TypeScript settings
+- Used only for `vite.config.ts`
+- Node.js types for build-time scripts
+
+> **Note:** JSON files don't support comments. See [CONFIG.md](CONFIG.md) for detailed explanations of each file.
 
 ## What Gets Deployed
 
