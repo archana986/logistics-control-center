@@ -54,6 +54,15 @@ AI-powered logistics incident response application built on Databricks. Features
 - Databricks CLI installed and authenticated
 - SQL Warehouse (Serverless recommended)
 - A catalog where you have `CREATE SCHEMA` permission
+- Git installed
+
+### Clone the Repository
+
+```bash
+# Clone the repo
+git clone https://github.com/archana-krishnamurthy_data/logistics-control-center.git
+cd logistics-control-center
+```
 
 ### Deployment (5 Commands)
 
