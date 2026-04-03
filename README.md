@@ -1,5 +1,7 @@
 # Logistics Control Center
 
+> **Credits:** This project is based on [josh-melton-db/logistics-control-center](https://github.com/josh-melton-db/logistics-control-center) by [Josh Melton](https://github.com/josh-melton-db). Enhanced with customer-facing documentation, parameterized configuration, and deployment improvements.
+
 AI-powered logistics incident response application built on Databricks. Features real-time streaming analytics, natural language queries via Genie Space, and intelligent document Q&A with Knowledge Assistant.
 
 ![Architecture Diagram](architecture-diagram.png)
