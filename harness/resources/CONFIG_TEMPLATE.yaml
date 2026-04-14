@@ -1,0 +1,66 @@
+# =============================================================================
+# Logistics Control Center — Deployment Configuration
+# =============================================================================
+# Fill in the required fields and pass this file to the skill.
+# Fields marked "auto-populated" are filled during deployment.
+# =============================================================================
+
+# Deployment mode: "demo" or "customer_adapt"
+#   demo           — generates synthetic logistics data, deploys everything
+#   customer_adapt — maps your existing tables to the app's schema
+mode: demo
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Workspace & Compute
+# ─────────────────────────────────────────────────────────────────────────────
+workspace:
+  # Databricks CLI profile name (use "DEFAULT" when running inside workspace)
+  profile: DEFAULT
+
+data:
+  # Unity Catalog catalog name (must have CREATE SCHEMA permission)
+  catalog: ""                             # REQUIRED
+  # Schema name — will be created if it doesn't exist
+  schema: "logistics_control_center"
+  # SQL Warehouse ID (leave empty to auto-select)
+  warehouse_id: ""                        # REQUIRED (or auto-detected)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Customer Data Adapt (only used when mode = "customer_adapt")
+# ─────────────────────────────────────────────────────────────────────────────
+customer_data:
+  # Where to find the customer's existing tables
+  source_catalog: ""
+  source_schema: ""
+
+  # Optional: manually override column mappings
+  # Format: { contract_table: { contract_col: customer_col } }
+  # Example:
+  #   column_overrides:
+  #     centers:
+  #       lat: latitude
+  #       lng: longitude
+  #     lanes:
+  #       avgDailyVolume: daily_vol
+  column_overrides: {}
+
+  # Tables to skip (won't create adapter views or stubs)
+  skip_tables: []
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AI Agents (auto-populated during deployment)
+# ─────────────────────────────────────────────────────────────────────────────
+agents:
+  genie_space_id: ""                      # Auto-populated after setup
+  ka_endpoint: ""                         # Auto-populated after setup
+  supervisor_endpoint: ""                 # Optional
+  model_endpoint: "databricks-meta-llama-3-1-70b-instruct"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Deployment Target
+# ─────────────────────────────────────────────────────────────────────────────
+target:
+  # Asset bundle target name
+  bundle_target: dev
+  # App name (default from databricks.yml)
+  app_name: logistics-incident-response
