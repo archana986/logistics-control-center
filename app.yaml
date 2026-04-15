@@ -36,9 +36,12 @@ env:
     value: /api
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # AI Model Configuration
+  # AI Model Configuration (OPTIONAL: Change to use a different model)
   # ─────────────────────────────────────────────────────────────────────────────
-  # Foundation Model for generating customer communications
+  # Foundation Model for generating customer communications (reroute suggestions,
+  # customer update drafts, incident analysis). Change the value below to any
+  # Foundation Model API pay-per-token endpoint available in your workspace.
+  # To see available endpoints: Workspace UI → Serving → Foundation Model APIs
   - name: DATABRICKS_MODEL_ENDPOINT
     value: databricks-llama-4-maverick
 

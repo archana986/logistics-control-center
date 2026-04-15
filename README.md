@@ -126,6 +126,8 @@ logistics-control-center/
 | `databricks.yml` | Asset Bundle definition - pipelines, jobs, app, variables | **Yes** - update `targets.dev` section |
 | `app.yaml` | App runtime config - environment variables for the running app | **Yes** - update env values |
 
+**Changing the AI model:** The Foundation Model used for customer communications and reroute suggestions is set in `app.yaml` under `DATABRICKS_MODEL_ENDPOINT` (~line 42). To use a different model, change the value to any Foundation Model API endpoint available in your workspace (e.g. `databricks-llama-4-maverick`, `databricks-claude-sonnet-4`). Then redeploy with `databricks bundle deploy -t dev`.
+
 ### Frontend Build Configuration
 
 | File | Purpose | Customer Edits? |
