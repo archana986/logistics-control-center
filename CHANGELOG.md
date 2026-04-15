@@ -38,7 +38,7 @@ First production-ready release of the Logistics Control Center - an AI-powered l
 
 #### Customer Communications
 - AI-generated customer update drafts
-- Foundation Model integration (Llama 3.1 70B)
+- Foundation Model integration (Llama 4 Maverick)
 - Customizable communication templates
 - Delivery status notifications
 

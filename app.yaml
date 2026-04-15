@@ -40,7 +40,7 @@ env:
   # ─────────────────────────────────────────────────────────────────────────────
   # Foundation Model for generating customer communications
   - name: DATABRICKS_MODEL_ENDPOINT
-    value: databricks-meta-llama-3-1-70b-instruct
+    value: databricks-llama-4-maverick
 
   # ─────────────────────────────────────────────────────────────────────────────
   # Unity Catalog Configuration (STEP 2: Update these)
