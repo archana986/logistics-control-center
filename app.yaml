@@ -13,7 +13,8 @@
 #   2. npm install && npm run build
 #   3. gunicorn starts FastAPI on port 8000
 #
-# SETUP: Update the environment variables below with your values.
+# SETUP: Set catalog and schema below (Step 2). All other values are
+#        auto-injected from the app resource in resources/app.yml via valueFrom.
 #        See SETUP.md for detailed instructions.
 # =============================================================================
 
@@ -46,21 +47,21 @@ env:
     value: databricks-llama-4-maverick
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # Unity Catalog Configuration (STEP 2: Update these)
+  # Unity Catalog Configuration (STEP 2: Update catalog and schema)
   # ─────────────────────────────────────────────────────────────────────────────
-  - name: DATABRICKS_SQL_WAREHOUSE_ID
-    value: "<YOUR_WAREHOUSE_ID>"               # Same as databricks.yml
   - name: DATABRICKS_CATALOG
-    value: "<YOUR_CATALOG>"                    # Same as databricks.yml
+    value: "<YOUR_CATALOG>"                    # ← Set your catalog name
   - name: DATABRICKS_SCHEMA
     value: "logistics_control_center"
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # Agent Configuration (STEP 5: Update after running setup job)
+  # Resource-backed values (auto-injected from app resources — do NOT edit)
   # ─────────────────────────────────────────────────────────────────────────────
+  - name: DATABRICKS_SQL_WAREHOUSE_ID
+    valueFrom: app-sql-warehouse               # Auto-injected from databricks.yml
   - name: DATABRICKS_GENIE_SPACE_ID
-    value: ""                                  # From setup job output
+    valueFrom: app-genie-space                 # Auto-injected from databricks.yml
   - name: DATABRICKS_KA_ENDPOINT
-    value: ""                                  # From setup job output
+    valueFrom: app-ka-endpoint                 # Auto-injected from databricks.yml
   - name: DATABRICKS_SUPERVISOR_ENDPOINT
     value: ""

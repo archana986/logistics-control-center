@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.0] - 2026-04-15
+
+### Changed
+
+#### Two-Phase Deployment (App Split)
+- Moved app resource and permissions job from `databricks.yml` to `resources/app.yml`
+- First deploy now creates only infrastructure (pipeline + jobs), without the app
+- App is included via `include: - resources/app.yml` after the setup job provides agent IDs
+- **Fixes first-time deploy failure** where Terraform errored on empty `genie_space_id`
+
+#### `valueFrom` for Auto-Injected Config
+- `app.yaml` now uses `valueFrom` for warehouse ID, Genie Space ID, and KA endpoint
+- These values are auto-injected from the app resource definition — no manual entry in `app.yaml`
+- Only `catalog` and `schema` need to be set in `app.yaml` (non-resource values)
+
+#### Foundation Model Update
+- Updated default model from `databricks-meta-llama-3-1-70b-instruct` to `databricks-llama-4-maverick`
+- Documented how to change the model endpoint in `app.yaml` and README
+
+#### Documentation
+- Rewrote SETUP.md with new 5-step CLI-based deployment flow
+- Updated README.md deploy table and project structure
+- All docs use generic placeholders (no workspace-specific values)
+
+---
+
 ## [1.0.0] - 2026-04-03
 
 ### Initial Release

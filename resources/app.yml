@@ -1,0 +1,52 @@
+# =============================================================================
+# Databricks App Resource - Logistics Control Center
+# =============================================================================
+# This file defines the Databricks App and its permissions job.
+#
+# DO NOT include this file until you have completed Step 4 (setup job) and
+# have the genie_space_id and ka_endpoint values.
+#
+# To activate: add "include: - resources/app.yml" to databricks.yml (Step 5)
+# =============================================================================
+
+resources:
+  apps:
+    logistics_control_center_app:
+      name: logistics-incident-response
+      description: "Logistics Control Center - AI-powered incident response"
+      source_code_path: .
+      resources:
+        - name: app-sql-warehouse
+          sql_warehouse:
+            id: ${var.warehouse_id}
+            permission: CAN_USE
+        - name: app-genie-space
+          genie_space:
+            name: "Logistics Control Center Metrics"
+            space_id: ${var.genie_space_id}
+            permission: CAN_RUN
+        - name: app-ka-endpoint
+          serving_endpoint:
+            name: ${var.ka_endpoint}
+            permission: CAN_QUERY
+
+  jobs:
+    logistics_app_permissions:
+      name: logistics-control-center-app-permissions
+      max_concurrent_runs: 1
+      timeout_seconds: 600
+      parameters:
+        - name: app_name
+          default: ${resources.apps.logistics_control_center_app.name}
+        - name: warehouse_id
+          default: ${var.warehouse_id}
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+      tasks:
+        - task_key: grant_app_uc_permissions
+          description: Grant app service principal access to Unity Catalog
+          notebook_task:
+            notebook_path: databricks/notebooks/grant_app_permissions.ipynb
+            source: WORKSPACE

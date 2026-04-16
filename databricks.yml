@@ -7,14 +7,15 @@
 #   - Knowledge Assistant for document Q&A
 #   - React + FastAPI application
 #
-# DEPLOYMENT (No YAML editing required after initial setup):
-#   1. Update the 'targets.dev' section with your workspace values
-#   2. Run: databricks bundle deploy -t dev
-#   3. Run: databricks bundle run logistics_setup -t dev
-#   4. Get genie_space_id and ka_endpoint from job output
-#   5. Update targets.dev.variables with those values
-#   6. Run: databricks bundle deploy -t dev
-#   7. Run: databricks bundle run logistics_app_permissions -t dev
+# DEPLOYMENT:
+#   1. Set warehouse_id and catalog in targets.dev.variables below
+#   2. Set catalog and schema in app.yaml
+#   3. Run: databricks bundle deploy -t dev
+#   4. Run: databricks bundle run logistics_setup -t dev
+#   5. Add genie_space_id + ka_endpoint from job output to targets.dev.variables
+#   6. Add "include: - resources/app.yml" to this file
+#   7. Run: databricks bundle deploy -t dev
+#   8. Run: databricks bundle run logistics_app_permissions -t dev
 #
 # See SETUP.md for detailed instructions.
 # =============================================================================
@@ -87,36 +88,12 @@ targets:
       ka_endpoint: ""                           # From setup job output
 
 # =============================================================================
-# RESOURCES - All resources defined (app deploys when IDs are provided)
+# RESOURCES - Infrastructure (pipeline + jobs)
+# =============================================================================
+# The Databricks App is defined in resources/app.yml and is included in Step 5
+# after the setup job has created the Genie Space and Knowledge Assistant.
 # =============================================================================
 resources:
-  # ---------------------------------------------------------------------------
-  # DATABRICKS APP
-  # ---------------------------------------------------------------------------
-  # The app requires genie_space_id and ka_endpoint to function.
-  # First deploy creates the app shell; it becomes fully functional after
-  # you add the IDs and redeploy.
-  # ---------------------------------------------------------------------------
-  apps:
-    logistics_control_center_app:
-      name: logistics-incident-response
-      description: "Logistics Control Center - AI-powered incident response"
-      source_code_path: .
-      resources:
-        - name: app-sql-warehouse
-          sql_warehouse:
-            id: ${var.warehouse_id}
-            permission: CAN_USE
-        - name: app-genie-space
-          genie_space:
-            name: "Logistics Control Center Metrics"
-            space_id: ${var.genie_space_id}
-            permission: CAN_RUN
-        - name: app-ka-endpoint
-          serving_endpoint:
-            name: ${var.ka_endpoint}
-            permission: CAN_QUERY
-
   # ---------------------------------------------------------------------------
   # STREAMING PIPELINE - Bronze/Silver/Gold
   # ---------------------------------------------------------------------------
@@ -282,23 +259,3 @@ resources:
             notebook_path: databricks/notebooks/run_reroute_optimization.ipynb
             source: WORKSPACE
 
-    # App permissions job - run after app deployment
-    logistics_app_permissions:
-      name: logistics-control-center-app-permissions
-      max_concurrent_runs: 1
-      timeout_seconds: 600
-      parameters:
-        - name: app_name
-          default: ${resources.apps.logistics_control_center_app.name}
-        - name: warehouse_id
-          default: ${var.warehouse_id}
-        - name: catalog
-          default: ${var.catalog}
-        - name: schema
-          default: ${var.schema}
-      tasks:
-        - task_key: grant_app_uc_permissions
-          description: Grant app service principal access to Unity Catalog
-          notebook_task:
-            notebook_path: databricks/notebooks/grant_app_permissions.ipynb
-            source: WORKSPACE

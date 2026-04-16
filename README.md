@@ -56,26 +56,26 @@ AI-powered logistics incident response application built on Databricks. Features
 - SQL Warehouse (Serverless recommended)
 - A catalog where you have `CREATE SCHEMA` permission
 
-**No local setup required** - everything runs in Databricks.
+* [Databricks CLI](https://docs.databricks.com/dev-tools/cli/install.html) installed and authenticated
 
-### Clone to Databricks Workspace
+### Clone and Deploy
 
-1. In Databricks UI: **Workspace** → **Repos** → **Add Repo**
-2. Paste URL: `https://github.com/archana-krishnamurthy_data/logistics-control-center`
-3. Click **Create Repo**
+```bash
+git clone https://github.com/archana-krishnamurthy_data/logistics-control-center.git
+cd logistics-control-center
+```
 
-### Deploy (6 Steps)
+### Deploy (5 Steps)
 
-| Step | Action | Where |
-|------|--------|-------|
-| 1 | Clone repo to Databricks | UI: Workspace → Repos → Add Repo |
-| 2 | Edit `databricks.yml` and `app.yaml` with warehouse_id, catalog | Databricks UI |
-| 3 | `databricks bundle deploy -t dev` | Terminal |
-| 4 | `databricks bundle run logistics_setup -t dev` (~10 min) | Terminal |
-| 5 | Add genie_space_id and ka_endpoint from job output to both files | Databricks UI |
-| 6 | `databricks bundle deploy -t dev` then `databricks bundle run logistics_app_permissions -t dev` | Terminal |
+| Step | Action | What to Edit |
+|------|--------|--------------|
+| 1 | Clone repo locally | None |
+| 2 | Set `warehouse_id` + `catalog` in `databricks.yml`, set `catalog` in `app.yaml` | 2 files, 3 values |
+| 3 | `databricks bundle deploy -t dev` (creates pipeline + jobs, no app yet) | None |
+| 4 | `databricks bundle run logistics_setup -t dev` (~10 min) — note IDs from output | None |
+| 5 | Add `include: - resources/app.yml` + IDs to `databricks.yml`, redeploy + run permissions | 1 file, 3 edits |
 
-**No YAML commenting/uncommenting required.** Just fill in values and deploy.
+Each value is entered **once** — warehouse ID, Genie Space ID, and KA endpoint are auto-injected into the app via `valueFrom`.
 
 - [SETUP.md](SETUP.md) - Detailed step-by-step guide
 - [CONFIG.md](CONFIG.md) - Configuration file reference
@@ -86,8 +86,10 @@ AI-powered logistics incident response application built on Databricks. Features
 logistics-control-center/
 ├── README.md                 # This file
 ├── SETUP.md                  # Detailed setup instructions
-├── databricks.yml            # Databricks Asset Bundle config
-├── app.yaml                  # Databricks App config
+├── databricks.yml            # Bundle config — pipeline + jobs (infra)
+├── app.yaml                  # App runtime config (startup + env vars)
+├── resources/
+│   └── app.yml               # App resource (included in Step 5)
 │
 ├── backend/                  # FastAPI Python backend
 │   ├── main.py               # App entry point
@@ -123,10 +125,11 @@ logistics-control-center/
 
 | File | Purpose | Customer Edits? |
 |------|---------|-----------------|
-| `databricks.yml` | Asset Bundle definition - pipelines, jobs, app, variables | **Yes** - update `targets.dev` section |
-| `app.yaml` | App runtime config - environment variables for the running app | **Yes** - update env values |
+| `databricks.yml` | Bundle definition — pipeline, jobs, variables | **Yes** — warehouse_id, catalog (Step 2), include + IDs (Step 5) |
+| `resources/app.yml` | App resource + permissions job | **No** — included via `databricks.yml` |
+| `app.yaml` | App runtime config — startup command + env vars | **Yes** — catalog only (Step 2) |
 
-**Changing the AI model:** The Foundation Model used for customer communications and reroute suggestions is set in `app.yaml` under `DATABRICKS_MODEL_ENDPOINT` (~line 42). To use a different model, change the value to any Foundation Model API endpoint available in your workspace (e.g. `databricks-llama-4-maverick`, `databricks-claude-sonnet-4`). Then redeploy with `databricks bundle deploy -t dev`.
+**Changing the AI model:** The Foundation Model used for customer communications and reroute suggestions is set in `app.yaml` under `DATABRICKS_MODEL_ENDPOINT` (~line 46). To use a different model, change the value to any Foundation Model API endpoint available in your workspace (e.g. `databricks-llama-4-maverick`, `databricks-claude-sonnet-4`). Then redeploy with `databricks bundle deploy -t dev`.
 
 ### Frontend Build Configuration
 
