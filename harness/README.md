@@ -26,31 +26,28 @@ The skill will ask which mode you want and collect the required inputs (catalog,
 ## Using from Databricks Genie Code
 
 1. Clone this repo into your Databricks workspace (Workspace > Add > Git folder)
-2. Switch to the `feature/deployment-harness` branch
-3. Open Genie Code in **Agent mode**
+2. Open Genie Code in **Agent mode**
+3. The skill auto-appears — Genie Code discovers the `SKILL.md` from the Git folder
 
-### Option A: `@` mention the skill file
+### Demo deploy prompt
 
-```
-@harness/SKILL.md Deploy demo mode to catalog "my_catalog" with warehouse_id "my_warehouse_id"
-```
-
-### Option B: Ask Genie Code to read the file
+Copy and paste, replacing the two values:
 
 ```
-Read the file harness/SKILL.md and then read harness/resources/DEMO_DEPLOY.md.
-Follow the steps to deploy the logistics demo.
-Use catalog "my_catalog" and warehouse_id "my_warehouse_id".
+@SKILL.md Deploy demo mode to catalog "MY_CATALOG" with warehouse_id "MY_WAREHOUSE_ID"
 ```
 
-### Customer data adapt
+### Customer data adapt prompt
 
 ```
-Read the file harness/SKILL.md and then read harness/resources/CUSTOMER_ADAPT_FLOW.md.
-Follow the steps to adapt to customer data.
-Use catalog "my_catalog", warehouse_id "my_warehouse_id",
-source_catalog "customer_prod", source_schema "supply_chain".
+@SKILL.md Adapt to customer data. Target catalog "MY_CATALOG", warehouse_id "MY_WAREHOUSE_ID",
+source_catalog "CUSTOMER_CATALOG", source_schema "CUSTOMER_SCHEMA".
 ```
+
+### Important notes for Genie Code
+
+- **No CLI:** The Databricks CLI is not available in Genie Code's notebook environment. The deploy guide includes Python SDK / REST API alternatives for every step. Genie Code will use these automatically.
+- **Knowledge Assistant:** The KA creation API may not be available in all environments. If setup task 8 fails, this is expected — the app works without it. To enable the KA panel, create a Knowledge Assistant manually via the Databricks UI (Agents > Create Knowledge Assistant) and update the app's `DATABRICKS_KA_ENDPOINT` environment variable.
 
 ## What Gets Deployed
 

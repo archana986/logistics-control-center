@@ -12,9 +12,9 @@ Deploy an AI-powered logistics incident response app on Databricks. React + Fast
 
 ## Prerequisites
 
-1. Databricks CLI installed and authenticated (`/databricks-authentication` or `databricks auth login`)
-2. `CREATE SCHEMA` permission on the target catalog
-3. A SQL Warehouse available (serverless preferred)
+1. `CREATE SCHEMA` permission on the target catalog
+2. A SQL Warehouse available (serverless preferred)
+3. Databricks CLI (for Claude Code / terminal) OR Python SDK access (for Genie Code / notebooks — CLI is not available in notebook environments)
 
 ## Configuration
 
@@ -52,14 +52,24 @@ Then read and follow the appropriate resource:
 - `/databricks-genie` — Genie Space creation
 - `/agent-bricks` — Knowledge Assistant creation
 
+## Known Limitations
+
+- **Knowledge Assistant:** KA creation API is not available in all environments (notably Genie Code notebooks). If it fails during setup, skip it — the app works without it, the KA panel will be inactive. To enable KA, create it manually via the Databricks UI (Agents > Create Knowledge Assistant) and update the app's `DATABRICKS_KA_ENDPOINT` env var.
+
 ## Error Recovery
 
 | Error | Resolution |
 |-------|-----------|
 | Auth error on `bundle deploy` | Run `databricks auth login --profile {profile}` |
-| Setup job task fails | `databricks runs get-output --run-id {id}` — retry if transient |
+| `databricks` CLI not available | Use Python SDK / REST API path (see DEMO_DEPLOY.md Step 2) |
+| Setup job task fails | Check task output — retry if transient |
+| Notebooks "Unable to access" | Ensure notebooks are imported without `.ipynb` extension in workspace path |
+| Job params not reaching notebooks | Add `base_parameters` with `catalog` and `schema` to every notebook task |
 | Genie Space creation fails | Fall back to REST API: `POST /api/2.0/genie/spaces` |
-| KA creation fails | Skip — app works without it |
+| KA creation fails | Skip — see Known Limitations above |
+| App creation SDK error | Use REST API `POST /api/2.0/apps` instead of SDK |
+| `Could not find principal` on GRANT | Use the SP's `applicationId` (UUID), not display name |
+| Warehouse permission error | Rely on app resource declarations — they auto-grant to the SP |
 | App returns 500 | Check `databricks apps logs logistics-incident-response` |
-| Permission denied on customer tables | `GRANT SELECT` on source tables to deploying principal |
+| Hardcoded old values in YAML | Read both files fully — replace ALL warehouse/catalog values, not just placeholders |
 | Bundle deploy timeout | Retry — first deploy builds node_modules |
