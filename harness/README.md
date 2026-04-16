@@ -28,19 +28,28 @@ The skill will ask which mode you want and collect the required inputs (catalog,
 1. Clone this repo into your Databricks workspace (Workspace > Add > Git folder)
 2. Switch to the `feature/deployment-harness` branch
 3. Open Genie Code in **Agent mode**
-4. Use `@` to reference the skill file directly from the repo:
 
-### Demo deploy
+### Option A: `@` mention the skill file
 
 ```
 @harness/SKILL.md Deploy demo mode to catalog "my_catalog" with warehouse_id "my_warehouse_id"
 ```
 
+### Option B: Ask Genie Code to read the file
+
+```
+Read the file harness/SKILL.md and then read harness/resources/DEMO_DEPLOY.md.
+Follow the steps to deploy the logistics demo.
+Use catalog "my_catalog" and warehouse_id "my_warehouse_id".
+```
+
 ### Customer data adapt
 
 ```
-@harness/SKILL.md Adapt to customer data in source_catalog "customer_prod", source_schema "supply_chain".
-Target catalog "my_catalog", warehouse_id "my_warehouse_id".
+Read the file harness/SKILL.md and then read harness/resources/CUSTOMER_ADAPT_FLOW.md.
+Follow the steps to adapt to customer data.
+Use catalog "my_catalog", warehouse_id "my_warehouse_id",
+source_catalog "customer_prod", source_schema "supply_chain".
 ```
 
 ## What Gets Deployed
