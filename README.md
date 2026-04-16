@@ -65,15 +65,17 @@ git clone https://github.com/archana-krishnamurthy_data/logistics-control-center
 cd logistics-control-center
 ```
 
-### Deploy (5 Steps)
+### Deploy (7 Steps)
 
 | Step | Action | What to Edit |
 |------|--------|--------------|
 | 1 | Clone repo locally | None |
-| 2 | Set `warehouse_id` + `catalog` in `databricks.yml`, set `catalog` in `app.yaml` | 2 files, 3 values |
+| 2 | Set `warehouse_id` + `catalog` in `databricks.yml`; set `catalog` in `app.yaml` | 2 files, 3 values |
 | 3 | `databricks bundle deploy -t dev` (creates pipeline + jobs, no app yet) | None |
 | 4 | `databricks bundle run logistics_setup -t dev` (~10 min) — note IDs from output | None |
-| 5 | Add `include: - resources/app.yml` + IDs to `databricks.yml`, redeploy + run permissions | 1 file, 3 edits |
+| 5 | `databricks bundle run logistics_streaming_refresh -t dev` (~5 min) | None |
+| 6 | Add `include: - resources/app.yml` + IDs to `databricks.yml`, redeploy + run permissions | 1 file, 3 edits |
+| 7 | Access app at URL from deploy output | None |
 
 Each value is entered **once** — warehouse ID, Genie Space ID, and KA endpoint are auto-injected into the app via `valueFrom`.
 
@@ -88,6 +90,7 @@ logistics-control-center/
 ├── SETUP.md                  # Detailed setup instructions
 ├── databricks.yml            # Bundle config — pipeline + jobs (infra)
 ├── app.yaml                  # App runtime config (startup + env vars)
+├── cleanup.sh                # Full teardown script
 ├── resources/
 │   └── app.yml               # App resource (included in Step 5)
 │

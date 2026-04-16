@@ -50,7 +50,7 @@ env:
   # Unity Catalog Configuration (STEP 2: Update catalog and schema)
   # ─────────────────────────────────────────────────────────────────────────────
   - name: DATABRICKS_CATALOG
-    value: "<YOUR_CATALOG>"                    # ← Set your catalog name
+    value: "akrishn_fe_dsa"                     # ← Set your catalog name
   - name: DATABRICKS_SCHEMA
     value: "logistics_control_center"
 

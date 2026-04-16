@@ -9,19 +9,23 @@
 #
 # DEPLOYMENT:
 #   1. Set warehouse_id and catalog in targets.dev.variables below
-#   2. Set catalog and schema in app.yaml
-#   3. Run: databricks bundle deploy -t dev
-#   4. Run: databricks bundle run logistics_setup -t dev
-#   5. Add genie_space_id + ka_endpoint from job output to targets.dev.variables
-#   6. Add "include: - resources/app.yml" to this file
-#   7. Run: databricks bundle deploy -t dev
-#   8. Run: databricks bundle run logistics_app_permissions -t dev
+#   2. Set catalog in app.yaml
+#   3. databricks bundle deploy -t dev
+#   4. databricks bundle run logistics_setup -t dev  (~10 min)
+#   5. databricks bundle run logistics_streaming_refresh -t dev
+#   6. Add genie_space_id + ka_endpoint from Step 4 output to targets.dev.variables
+#   7. Add "include: - resources/app.yml" to this file
+#   8. databricks bundle deploy -t dev
+#   9. databricks bundle run logistics_app_permissions -t dev
 #
 # See SETUP.md for detailed instructions.
 # =============================================================================
 
 bundle:
   name: logistics-control-center
+
+include:
+  - resources/app.yml
 
 sync:
   exclude:
@@ -78,14 +82,14 @@ targets:
       # ┌─────────────────────────────────────────────────────────────────────┐
       # │ STEP 2: Replace these with your workspace values                   │
       # └─────────────────────────────────────────────────────────────────────┘
-      warehouse_id: "<YOUR_WAREHOUSE_ID>"      # SQL Warehouses → Copy ID
-      catalog: "<YOUR_CATALOG>"                 # Your Unity Catalog name
+      warehouse_id: "94565ba1e601c81a"           # SQL Warehouses → Copy ID
+      catalog: "akrishn_fe_dsa"                  # Your Unity Catalog name
       schema: "logistics_control_center"
       # ┌─────────────────────────────────────────────────────────────────────┐
       # │ STEP 5: Add these AFTER running 'logistics_setup' job              │
       # └─────────────────────────────────────────────────────────────────────┘
-      genie_space_id: ""                        # From setup job output
-      ka_endpoint: ""                           # From setup job output
+      genie_space_id: "01f12f64ff5a11f190703605380458ca"  # From setup job output
+      ka_endpoint: "ka-fb9c590c-endpoint"              # From setup job output
 
 # =============================================================================
 # RESOURCES - Infrastructure (pipeline + jobs)

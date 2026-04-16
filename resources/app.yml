@@ -48,5 +48,5 @@ resources:
         - task_key: grant_app_uc_permissions
           description: Grant app service principal access to Unity Catalog
           notebook_task:
-            notebook_path: databricks/notebooks/grant_app_permissions.ipynb
+            notebook_path: ../databricks/notebooks/grant_app_permissions.ipynb
             source: WORKSPACE

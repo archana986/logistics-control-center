@@ -40,13 +40,6 @@ Open `databricks.yml` and find the `targets.dev.variables` section (~line 77). R
       schema: "logistics_control_center"
 ```
 
-If deploying from your **local machine** (not workspace terminal), also update the profile (~line 75):
-
-```yaml
-    workspace:
-      profile: your-cli-profile                # ← Your CLI profile name
-```
-
 ### Edit app.yaml
 
 Open `app.yaml` and find the Unity Catalog Configuration section (~line 49). Set your catalog:
@@ -101,9 +94,21 @@ SAVE THESE VALUES FOR STEP 5:
 ════════════════════════════════════════════════════════════════════════════
 ```
 
-## Step 5: Add Agent IDs and Deploy the App
+## Step 5: Run the Streaming Refresh
 
-### 5a. Add the include line to databricks.yml
+```bash
+databricks bundle run logistics_streaming_refresh -t dev
+```
+
+This takes **3-5 minutes** and:
+- Appends incremental events to the raw data volumes
+- Runs the Bronze → Silver → Gold pipeline update
+- Refreshes serving tables for the app
+- Updates reroute optimization data
+
+## Step 6: Add Agent IDs and Deploy the App
+
+### 6a. Add the include line to databricks.yml
 
 Open `databricks.yml` and add this line near the top (after the `sync:` block, before `workspace:`):
 
@@ -112,7 +117,7 @@ include:
   - resources/app.yml
 ```
 
-### 5b. Add the agent IDs to databricks.yml
+### 6b. Add the agent IDs to databricks.yml
 
 In the same `targets.dev.variables` section you edited in Step 2, add the IDs from Step 4:
 
@@ -125,7 +130,7 @@ In the same `targets.dev.variables` section you edited in Step 2, add the IDs fr
       ka_endpoint: "your-ka-endpoint"                      # ← From Step 4 output
 ```
 
-### 5c. Deploy and grant permissions
+### 6c. Deploy and grant permissions
 
 ```bash
 # Deploy the app
@@ -135,7 +140,7 @@ databricks bundle deploy -t dev
 databricks bundle run logistics_app_permissions -t dev
 ```
 
-## Step 6: Access Your App
+## Step 7: Access Your App
 
 Your app URL is shown in the deployment output:
 
@@ -172,7 +177,7 @@ Click the URL to open the Logistics Control Center.
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 4: Run Setup (~10 min)                                               │
+│  STEP 4: Run Setup Job (~10 min)                                           │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  databricks bundle run logistics_setup -t dev                              │
 │  → Note: genie_space_id and ka_endpoint from output                       │
@@ -180,7 +185,15 @@ Click the URL to open the Logistics Control Center.
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 5: Add IDs + Deploy App (1 file)                                     │
+│  STEP 5: Run Streaming Refresh (~5 min)                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  databricks bundle run logistics_streaming_refresh -t dev                  │
+│  Appends events → runs pipeline → refreshes serving tables                │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  STEP 6: Add IDs + Deploy App (1 file)                                     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  databricks.yml → Add include: resources/app.yml                           │
 │  databricks.yml → Add genie_space_id + ka_endpoint                         │
@@ -190,8 +203,8 @@ Click the URL to open the Logistics Control Center.
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 6: Access App                                                        │
-├─────────────────────────────────────────────────────────────────────────────┤
+│  STEP 7: Access App                                                        │
+├─────────────────────────────────────────────────────────────────────────────┘
 │  https://logistics-incident-response-<workspace-id>.databricksapps.com     │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -202,8 +215,8 @@ Click the URL to open the Logistics Control Center.
 |------|----------------|------|
 | `databricks.yml` | `warehouse_id`, `catalog` | Step 2 |
 | `app.yaml` | `DATABRICKS_CATALOG` | Step 2 |
-| `databricks.yml` | Add `include: - resources/app.yml` | Step 5 |
-| `databricks.yml` | `genie_space_id`, `ka_endpoint` | Step 5 |
+| `databricks.yml` | Add `include: - resources/app.yml` | Step 6 |
+| `databricks.yml` | `genie_space_id`, `ka_endpoint` | Step 6 |
 
 **Values you never need to edit:**
 - `app.yaml` warehouse ID, Genie Space ID, KA endpoint — auto-injected via `valueFrom`
@@ -215,19 +228,20 @@ Click the URL to open the Logistics Control Center.
 |-------|----------|
 | **"Catalog not found"** | Verify catalog access: `SHOW CATALOGS;` in SQL Editor |
 | **"Warehouse not found"** | Check warehouse ID; verify CAN_USE permission |
-| **Deploy fails with empty space_id** | Make sure you added `include: - resources/app.yml` only AFTER Step 4 |
+| **Deploy fails with empty space_id** | Make sure you added `include: - resources/app.yml` only AFTER Step 4 (in Step 6) |
 | **Validation fails** | Ensure all placeholders are replaced with real values |
 | **App won't start** | Check logs at `https://<app-url>/logz` |
 | **Setup job fails** | Check task-level logs in Jobs UI; likely permissions issue |
 
 ## Cleanup
 
-```bash
-databricks bundle destroy -t dev
+To remove **everything** created by this demo (DAB resources, Genie Space, KA endpoint, UC schema):
 
-# Manually delete schema if needed:
-# DROP SCHEMA IF EXISTS <catalog>.logistics_control_center CASCADE;
+```bash
+./cleanup.sh
 ```
+
+The script reads your `databricks.yml` for IDs, confirms before deleting, and handles each resource independently (if one is already gone, it continues).
 
 ## FAQ
 
