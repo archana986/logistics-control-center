@@ -25,32 +25,21 @@ The skill will ask which mode you want and collect the required inputs (catalog,
 
 ## Using from Databricks Genie Code
 
-### One-time setup: Install the skill
-
-Genie Code discovers skills from `.assistant/skills/` in your workspace, not from Git folders directly. Run the install notebook once to copy the skill into place:
-
 1. Clone this repo into your Databricks workspace (Workspace > Add > Git folder)
-2. Open `harness/install_skill.py` as a notebook
-3. Run all cells — this copies the skill to `/Users/{you}/.assistant/skills/logistics-demo/`
+2. Switch to the `feature/deployment-harness` branch
+3. Open Genie Code in **Agent mode**
+4. Use `@` to reference the skill file directly from the repo:
 
-### Use the skill
-
-Once installed, Genie Code auto-loads the skill in **Agent mode** when you ask about deploying or setting up the logistics demo. You can also invoke it explicitly:
-
-```
-@logistics-demo Deploy demo mode to catalog "my_catalog" with warehouse_id "my_warehouse_id"
-```
-
-Or describe what you want naturally:
+### Demo deploy
 
 ```
-Deploy the logistics control center demo using catalog "my_catalog" and warehouse "my_warehouse_id"
+@harness/SKILL.md Deploy demo mode to catalog "my_catalog" with warehouse_id "my_warehouse_id"
 ```
 
-### Customer data adapt via Genie Code
+### Customer data adapt
 
 ```
-@logistics-demo Adapt to customer data in source_catalog "customer_prod", source_schema "supply_chain".
+@harness/SKILL.md Adapt to customer data in source_catalog "customer_prod", source_schema "supply_chain".
 Target catalog "my_catalog", warehouse_id "my_warehouse_id".
 ```
 
@@ -71,7 +60,6 @@ Target catalog "my_catalog", warehouse_id "my_warehouse_id".
 harness/
 ├── SKILL.md                        # Skill router (entry point for both runtimes)
 ├── README.md                       # This file
-├── install_skill.py                # One-click installer for Genie Code
 └── resources/
     ├── DEMO_DEPLOY.md              # Demo deploy flow (synthetic data)
     ├── CUSTOMER_ADAPT_FLOW.md      # Customer data adapt flow (real data)
