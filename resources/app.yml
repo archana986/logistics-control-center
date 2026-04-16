@@ -35,6 +35,9 @@ resources:
       name: logistics-control-center-app-permissions
       max_concurrent_runs: 1
       timeout_seconds: 600
+      tags:
+        project: logistics-control-center
+        managed_by: dab
       parameters:
         - name: app_name
           default: ${resources.apps.logistics_control_center_app.name}

@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [1.1.0] - 2026-04-15
+## [1.1.0] - 2026-04-16
 
 ### Changed
 
@@ -25,8 +25,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Updated default model from `databricks-meta-llama-3-1-70b-instruct` to `databricks-llama-4-maverick`
 - Documented how to change the model endpoint in `app.yaml` and README
 
+#### Resource Tagging
+- Added `project: logistics-control-center` and `managed_by: dab` tags to all jobs and pipeline
+- Enables tag-based resource discovery for cleanup and monitoring
+
+### Added
+- `cleanup.sh` — full teardown script (DAB destroy, Genie Space, KA endpoint, schema)
+  - Falls back to tag-based cleanup if bundle state is broken
+  - Verification step confirms all resources are removed
+
+### Fixed
+- `stream_events_to_volume.ipynb` — fixed `orderBy("updated_at DESC")` (column didn't exist; changed to `desc("currentETA")`)
+
 #### Documentation
-- Rewrote SETUP.md with new 5-step CLI-based deployment flow
+- Rewrote SETUP.md with 7-step CLI-based deployment flow (includes streaming refresh step)
 - Updated README.md deploy table and project structure
 - All docs use generic placeholders (no workspace-specific values)
 

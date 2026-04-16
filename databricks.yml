@@ -7,25 +7,20 @@
 #   - Knowledge Assistant for document Q&A
 #   - React + FastAPI application
 #
-# DEPLOYMENT:
-#   1. Set warehouse_id and catalog in targets.dev.variables below
-#   2. Set catalog in app.yaml
+# DEPLOYMENT (7 steps — see SETUP.md for details):
+#   1. Clone repo
+#   2. Set warehouse_id + catalog below; set catalog in app.yaml
 #   3. databricks bundle deploy -t dev
 #   4. databricks bundle run logistics_setup -t dev  (~10 min)
 #   5. databricks bundle run logistics_streaming_refresh -t dev
-#   6. Add genie_space_id + ka_endpoint from Step 4 output to targets.dev.variables
-#   7. Add "include: - resources/app.yml" to this file
-#   8. databricks bundle deploy -t dev
-#   9. databricks bundle run logistics_app_permissions -t dev
+#   6. Add include + IDs from Step 4 → redeploy → run permissions
+#   7. Access app
 #
 # See SETUP.md for detailed instructions.
 # =============================================================================
 
 bundle:
   name: logistics-control-center
-
-include:
-  - resources/app.yml
 
 sync:
   exclude:
@@ -82,14 +77,14 @@ targets:
       # ┌─────────────────────────────────────────────────────────────────────┐
       # │ STEP 2: Replace these with your workspace values                   │
       # └─────────────────────────────────────────────────────────────────────┘
-      warehouse_id: "94565ba1e601c81a"           # SQL Warehouses → Copy ID
-      catalog: "akrishn_fe_dsa"                  # Your Unity Catalog name
+      warehouse_id: "<YOUR_WAREHOUSE_ID>"      # SQL Warehouses → Copy ID
+      catalog: "<YOUR_CATALOG>"                 # Your Unity Catalog name
       schema: "logistics_control_center"
       # ┌─────────────────────────────────────────────────────────────────────┐
       # │ STEP 5: Add these AFTER running 'logistics_setup' job              │
       # └─────────────────────────────────────────────────────────────────────┘
-      genie_space_id: "01f12f64ff5a11f190703605380458ca"  # From setup job output
-      ka_endpoint: "ka-fb9c590c-endpoint"              # From setup job output
+      genie_space_id: ""                        # From setup job output
+      ka_endpoint: ""                           # From setup job output
 
 # =============================================================================
 # RESOURCES - Infrastructure (pipeline + jobs)
@@ -110,6 +105,9 @@ resources:
       channel: CURRENT
       continuous: false
       serverless: true
+      tags:
+        project: logistics-control-center
+        managed_by: dab
       configuration:
         catalog: ${var.catalog}
         schema: ${var.schema}
@@ -130,6 +128,9 @@ resources:
       name: logistics-control-center-setup
       max_concurrent_runs: 1
       timeout_seconds: 3600
+      tags:
+        project: logistics-control-center
+        managed_by: dab
       environments:
         - environment_key: default
           spec:
@@ -221,6 +222,9 @@ resources:
     logistics_streaming_refresh:
       name: logistics-control-center-streaming-refresh
       max_concurrent_runs: 1
+      tags:
+        project: logistics-control-center
+        managed_by: dab
       schedule:
         quartz_cron_expression: "0 */5 * * * ?"
         timezone_id: "UTC"

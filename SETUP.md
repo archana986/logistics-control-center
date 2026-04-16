@@ -232,6 +232,27 @@ Click the URL to open the Logistics Control Center.
 | **Validation fails** | Ensure all placeholders are replaced with real values |
 | **App won't start** | Check logs at `https://<app-url>/logz` |
 | **Setup job fails** | Check task-level logs in Jobs UI; likely permissions issue |
+| **Genie Space: "You don't have CAN_MANAGE permission"** | See the Genie Space Permissions section below |
+
+### Genie Space Permissions
+
+The setup job automatically grants `CAN_MANAGE` on the Genie Space to the deploying user. If this fails (e.g., workspace permissions restrictions), you'll see a warning in the job output:
+
+```
+⚠ Could not grant CAN_MANAGE (non-fatal): ...
+```
+
+**To fix manually:**
+
+1. Open your Databricks workspace
+2. Navigate to **Genie** in the left sidebar
+3. Find the **Logistics Control Center Metrics** space
+4. Click the **Share** button (top right)
+5. Add your user email and set the permission to **Can Manage**
+6. Click **Done**
+
+You need `CAN_MANAGE` to edit instructions, update tables, or delete the Genie Space.
+If you only need read/query access, `CAN_RUN` is sufficient.
 
 ## Cleanup
 
@@ -262,3 +283,11 @@ In the setup job output, or: Workspace → Genie → Your space → ID in URL.
 
 **Q: Why is the app in a separate file (resources/app.yml)?**
 The app requires a Genie Space ID and KA endpoint that don't exist until the setup job creates them. By keeping the app in a separate include file, the first deploy succeeds without those IDs. You add the include after the setup job provides them.
+
+**Q: I can't edit or delete the Genie Space — it says I need CAN_MANAGE permission. How do I fix it?**
+The setup job tries to grant you `CAN_MANAGE` automatically. If that step failed (you'll see a `⚠ Could not grant CAN_MANAGE` warning in the job output), grant it manually:
+1. Open **Genie** in the workspace sidebar
+2. Click the **Logistics Control Center Metrics** space
+3. Click **Share** (top right) → Add your email → Set to **Can Manage** → **Done**
+
+If you don't see the Share button, ask a workspace admin to grant you `CAN_MANAGE` on the space.

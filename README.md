@@ -205,6 +205,7 @@ logistics-control-center/
 | `Warehouse not found` | Verify warehouse ID and that you have CAN_USE permission |
 | `App won't start` | Check logs at `https://<app-url>/logz` |
 | `Genie Space errors` | Ensure metric views were created successfully |
+| `Can't edit/delete Genie Space` | Grant yourself CAN_MANAGE: Genie → Your space → Share → Add your email → Can Manage. See [SETUP.md](SETUP.md#genie-space-permissions) for details |
 
 ## License
 
