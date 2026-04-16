@@ -25,25 +25,33 @@ The skill will ask which mode you want and collect the required inputs (catalog,
 
 ## Using from Databricks Genie Code
 
-1. Clone this repo into your Databricks workspace (Repos > Add Repo)
-2. Open a new notebook with Genie Code enabled
-3. Point Genie Code at the skill file:
+### One-time setup: Install the skill
+
+Genie Code discovers skills from `.assistant/skills/` in your workspace, not from Git folders directly. Run the install notebook once to copy the skill into place:
+
+1. Clone this repo into your Databricks workspace (Workspace > Add > Git folder)
+2. Open `harness/install_skill.py` as a notebook
+3. Run all cells — this copies the skill to `/Users/{you}/.assistant/skills/logistics-demo/`
+
+### Use the skill
+
+Once installed, Genie Code auto-loads the skill in **Agent mode** when you ask about deploying or setting up the logistics demo. You can also invoke it explicitly:
 
 ```
-Read the file at /Workspace/Users/{your_email}/.bundle/logistics-control-center/dev/harness/SKILL.md
-and follow the Demo Deploy instructions.
-Use catalog "{your_catalog}" and warehouse_id "{your_warehouse_id}".
+@logistics-demo Deploy demo mode to catalog "my_catalog" with warehouse_id "my_warehouse_id"
 ```
 
-Genie Code will read the instructions, understand the Databricks context, and execute the deployment steps with automatic error recovery.
+Or describe what you want naturally:
+
+```
+Deploy the logistics control center demo using catalog "my_catalog" and warehouse "my_warehouse_id"
+```
 
 ### Customer data adapt via Genie Code
 
 ```
-Read the file at /Workspace/Users/{your_email}/.bundle/logistics-control-center/dev/harness/SKILL.md
-and follow the Customer Data Adapt instructions.
-Use catalog "my_catalog", schema "logistics_control_center",
-source_catalog "customer_prod", source_schema "supply_chain".
+@logistics-demo Adapt to customer data in source_catalog "customer_prod", source_schema "supply_chain".
+Target catalog "my_catalog", warehouse_id "my_warehouse_id".
 ```
 
 ## What Gets Deployed
@@ -63,6 +71,7 @@ source_catalog "customer_prod", source_schema "supply_chain".
 harness/
 ├── SKILL.md                        # Skill router (entry point for both runtimes)
 ├── README.md                       # This file
+├── install_skill.py                # One-click installer for Genie Code
 └── resources/
     ├── DEMO_DEPLOY.md              # Demo deploy flow (synthetic data)
     ├── CUSTOMER_ADAPT_FLOW.md      # Customer data adapt flow (real data)
