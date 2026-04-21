@@ -156,26 +156,35 @@ If the customer has documents in a UC volume, create a KA pointing at them. Othe
 
 Extract `ka_endpoint` if created.
 
-## Step 11 — Deploy app
+## Step 11 — Deploy app (two-phase)
 
-Clone the repo and patch configs using placeholder patterns:
+Clone the repo and configure:
 ```bash
 git clone https://github.com/archana986/logistics-control-center.git
 cd logistics-control-center
-
-sed -i '' 's/<YOUR_WAREHOUSE_ID>/{warehouse_id}/g' databricks.yml app.yaml
-sed -i '' 's/<YOUR_CATALOG>/{catalog}/g' databricks.yml app.yaml
-sed -i '' 's/genie_space_id: ""/genie_space_id: "{genie_space_id}"/' databricks.yml
-sed -i '' 's/ka_endpoint: ""/ka_endpoint: "{ka_endpoint}"/' databricks.yml
 ```
 
-Deploy and set permissions:
+### Phase 1: Set warehouse_id and catalog in `databricks.yml` and `app.yaml`
+
+In `databricks.yml` `targets.dev.variables`: set `warehouse_id`, `catalog`, `genie_space_id`, `ka_endpoint`.
+
+In `app.yaml`: only set `DATABRICKS_CATALOG` and `DATABRICKS_SCHEMA` (warehouse/genie/KA are auto-injected via `valueFrom`).
+
+### Phase 2: Add app include and deploy
+
+Add to `databricks.yml`:
+```yaml
+include:
+  - resources/app.yml
+```
+
+Deploy and grant permissions:
 ```bash
 databricks bundle deploy -t dev
 databricks bundle run logistics_app_permissions -t dev
 ```
 
-**Note:** Skip the setup job — adapter views replace synthetic data generation entirely.
+**Note:** Skip the setup job and streaming refresh — adapter views replace synthetic data entirely.
 
 ## Step 12 — Verify
 

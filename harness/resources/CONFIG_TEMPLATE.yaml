@@ -54,7 +54,7 @@ agents:
   genie_space_id: ""                      # Auto-populated after setup
   ka_endpoint: ""                         # Auto-populated after setup
   supervisor_endpoint: ""                 # Optional
-  model_endpoint: "databricks-meta-llama-3-1-70b-instruct"
+  model_endpoint: "databricks-llama-4-maverick"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Deployment Target

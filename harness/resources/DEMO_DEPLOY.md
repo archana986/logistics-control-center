@@ -4,113 +4,62 @@ Deploy the Logistics Control Center with synthetic data. No customer data needed
 
 **Two runtime paths:** This guide provides both CLI commands (for Claude Code / local terminal) and Python SDK/REST API equivalents (for Genie Code / notebook environments where the Databricks CLI is not available). Use whichever matches your environment.
 
+**Two-phase deployment:** The app is deployed separately from infrastructure. Phase 1 (Steps 1-5) creates the pipeline, jobs, and data. Phase 2 (Steps 6-7) adds the app after agent IDs are known. This avoids first-deploy failures from empty Genie Space IDs.
+
 ## Step 1 — Configure YAML files
 
-The YAML config files may contain either placeholder markers (`<YOUR_WAREHOUSE_ID>`, `<YOUR_CATALOG>`) or hardcoded values from a previous deployment. Replace **all** occurrences of warehouse_id, catalog, and schema values in both `databricks.yml` and `app.yaml`.
+### `databricks.yml`
 
-### What to replace in `databricks.yml`
-
-In the `targets.dev.variables` section, set:
+In the `targets.dev.variables` section, set `warehouse_id` and `catalog`:
 ```yaml
-warehouse_id: "{warehouse_id}"
-catalog: "{catalog}"
-schema: "{schema}"
-genie_space_id: ""
-ka_endpoint: ""
+variables:
+  warehouse_id: "{warehouse_id}"
+  catalog: "{catalog}"
+  schema: "{schema}"                    # default: logistics_control_center
+  genie_space_id: ""                    # leave empty — populated in Step 6
+  ka_endpoint: ""                       # leave empty — populated in Step 6
 ```
 
-Clear any pre-existing `genie_space_id` or `ka_endpoint` values — they'll be populated after the setup job.
+**Do NOT add `include: - resources/app.yml` yet** — the app is added in Step 6 after agent IDs exist.
 
-### What to replace in `app.yaml`
+### `app.yaml`
 
-In the `env` section, set:
+Only `catalog` and `schema` need to be set. Warehouse ID, Genie Space ID, and KA endpoint are auto-injected via `valueFrom` from the app resource:
 ```yaml
-- name: DATABRICKS_SQL_WAREHOUSE_ID
-  value: "{warehouse_id}"
 - name: DATABRICKS_CATALOG
   value: "{catalog}"
 - name: DATABRICKS_SCHEMA
   value: "{schema}"
-- name: DATABRICKS_GENIE_SPACE_ID
-  value: ""
-- name: DATABRICKS_KA_ENDPOINT
-  value: ""
 ```
 
-### Important: handle hardcoded author values
+Do NOT edit the `valueFrom` entries — they are auto-injected from `resources/app.yml`.
 
-The dev target may already have the original author's values baked in (not placeholders). Common stale values to look for and replace:
-- `94565ba1e601c81a` (old warehouse ID)
-- `akrishn_fe_dsa` (old catalog)
+### Placeholder format
 
-**Do not assume only placeholders need replacing.** Read both files, find ALL occurrences of warehouse_id, catalog, and schema values, and replace them with the user's values.
+The YAML files use placeholder values like `"your-warehouse-id"` and `"<YOUR_CATALOG>"`. Replace ALL occurrences — search both files for any warehouse, catalog, or schema values and update them.
 
-## Step 2 — Deploy infrastructure
+## Step 2 — Deploy infrastructure (Phase 1 — no app yet)
 
 ### CLI path
 ```bash
 databricks bundle deploy -t dev
 ```
 
+This creates the pipeline and jobs only. The app is NOT deployed yet (it's in `resources/app.yml` which is not included).
+
 ### SDK/REST API path (Genie Code / notebooks)
 
-The Databricks CLI is not available in notebook execution environments. Instead, use the Databricks Python SDK and REST API to replicate bundle deploy:
+The Databricks CLI is not available in notebook execution environments. Use the Python SDK:
 
-1. **Upload files** to the workspace using the Workspace API:
-   ```python
-   from databricks.sdk import WorkspaceClient
-   w = WorkspaceClient()
-   # Upload all repo files to the bundle workspace path
-   # Target: /Workspace/Users/{username}/.bundle/logistics-control-center/dev/
-   ```
+1. **Upload files** to the workspace bundle path
+2. **Create the streaming pipeline** via `w.pipelines.create()`
+3. **Create the setup job** via `w.jobs.create()`
+   - IMPORTANT: Pass `base_parameters` with `catalog` and `schema` on EVERY notebook task
+   - Job-level parameters do NOT auto-propagate to notebook widgets
 
-2. **Create the streaming pipeline** via SDK:
-   ```python
-   pipeline = w.pipelines.create(
-       name="logistics-control-center-streaming",
-       catalog="{catalog}",
-       target="{schema}",
-       serverless=True,
-       channel="CURRENT",
-       continuous=False,
-       libraries=[...],  # References to 01_bronze.sql, 02_silver.sql, 03_gold.sql
-       configuration={"catalog": "{catalog}", "schema": "{schema}"}
-   )
-   pipeline_id = pipeline.pipeline_id
-   ```
-
-3. **Create the setup job** via SDK:
-   ```python
-   job = w.jobs.create(
-       name="logistics-control-center-setup",
-       tasks=[...],  # 8 tasks from databricks.yml
-       # IMPORTANT: Pass base_parameters on EVERY notebook task:
-       #   {"catalog": "{catalog}", "schema": "{schema}"}
-       # Job-level parameters do NOT auto-propagate to notebook widgets
-   )
-   ```
-
-4. **Create the app** via REST API (SDK may lack some App resource types):
-   ```python
-   import requests
-   resp = requests.post(
-       f"{w.config.host}/api/2.0/apps",
-       headers={"Authorization": f"Bearer {w.config.token}"},
-       json={
-           "name": "logistics-incident-response",
-           "description": "Logistics Control Center",
-           "resources": [
-               {"name": "app-sql-warehouse", "sql_warehouse": {"id": "{warehouse_id}", "permission": "CAN_USE"}},
-               {"name": "app-genie-space", "genie_space": {"space_id": "", "permission": "CAN_RUN"}},
-           ]
-       }
-   )
-   ```
-
-**SDK version gotchas:**
-- `JobEnvironmentSpec` may not exist in older SDK versions — omit the `environments` parameter; serverless compute works without it
-- `AppResourceGenieSpace` may not exist — use the REST API for app creation
-- When uploading notebooks, import them **without** the `.ipynb` extension in the workspace path, or job task notebook references won't resolve
+**SDK gotchas:**
+- `JobEnvironmentSpec` may not exist — omit `environments`; serverless works without it
+- Import notebooks **without** `.ipynb` extension in workspace paths
 
 ## Step 3 — Run setup job
 
@@ -122,38 +71,49 @@ databricks bundle run logistics_setup -t dev
 ### SDK path
 ```python
 run = w.jobs.run_now(job_id=job_id)
-# Poll for completion
-import time
-while True:
-    status = w.jobs.get_run(run.run_id)
-    if status.state.life_cycle_state.value in ("TERMINATED", "SKIPPED", "INTERNAL_ERROR"):
-        break
-    time.sleep(30)
+# Poll until TERMINATED
 ```
 
 Takes ~10 minutes. Runs 8 sequential tasks:
 1. Creates schema, volumes, and serving tables
-2. Generates synthetic data (shipments, incidents, centers, lanes, customers)
+2. Generates synthetic data
 3. Runs the Bronze/Silver/Gold pipeline
-4. Refreshes serving tables from gold outputs
+4. Refreshes serving tables
 5. Creates helper and metric views
 6. Generates synthetic KA documents
-7. Creates a Genie Space from metric views
-8. Creates a Knowledge Assistant from generated docs
+7. Creates a Genie Space — note the `genie_space_id` from output
+8. Creates a Knowledge Assistant — note the `ka_endpoint` from output
 
-**Task 8 (Knowledge Assistant) may fail.** The KA creation API is not available in all environments. If it fails, **skip it** — the app works without it, the KA panel will just be inactive. This is a known limitation.
+**Task 7 (Genie Space):** The setup job auto-grants `CAN_MANAGE` to the deploying user. If that fails, grant manually: Genie > Space > Share > Add your email > Can Manage.
 
-## Step 4 — Extract agent IDs and activate app
+**Task 8 (Knowledge Assistant) may fail.** KA creation API is not available in all environments. If it fails, skip it — the app works without it. See Known Limitations in SKILL.md.
 
-After the setup job completes, extract:
-- `genie_space_id` — from the `create_genie_space` task output
-- `ka_endpoint` — from the `create_knowledge_assistant` task output (if task succeeded)
+## Step 4 — Run streaming refresh
 
 ### CLI path
 ```bash
-JOB_ID=$(databricks jobs list --name "logistics-control-center-setup" --output json | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['job_id'])")
-RUN_ID=$(databricks runs list --job-id $JOB_ID --output json | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['run_id'])")
-databricks runs get-output --run-id $RUN_ID --output json
+databricks bundle run logistics_streaming_refresh -t dev
+```
+
+### SDK path
+```python
+refresh_run = w.jobs.run_now(job_id=streaming_refresh_job_id)
+# Poll until TERMINATED
+```
+
+Takes ~5 minutes. Populates live streaming data for the dashboard.
+
+## Step 5 — Extract agent IDs
+
+From the setup job output (Step 3), extract:
+- `genie_space_id` — from the `create_genie_space` task output
+- `ka_endpoint` — from the `create_knowledge_assistant` task output (if it succeeded)
+
+### CLI path
+```bash
+# Find in the job run output, or:
+# Workspace UI → Genie → Logistics Control Center Metrics → ID in URL
+# Workspace UI → Serving → KA endpoint name
 ```
 
 ### SDK path
@@ -164,55 +124,61 @@ for task in run_output.tasks:
         # Parse genie_space_id from notebook output
         pass
     if task.task_key == "create_knowledge_assistant":
-        # Parse ka_endpoint from notebook output (may be missing if task failed)
+        # Parse ka_endpoint from notebook output (may be missing)
         pass
 ```
 
-### Update the app with agent IDs
+## Step 6 — Add app include + agent IDs, redeploy (Phase 2)
 
-Via REST API:
+### 6a. Add the include line to `databricks.yml`
+
+Near the top of the file, add:
+```yaml
+include:
+  - resources/app.yml
+```
+
+### 6b. Add the agent IDs to `databricks.yml`
+
+In the `targets.dev.variables` section:
+```yaml
+genie_space_id: "{extracted_genie_space_id}"
+ka_endpoint: "{extracted_ka_endpoint}"
+```
+
+### 6c. Deploy and grant permissions
+
+#### CLI path
+```bash
+databricks bundle deploy -t dev
+databricks bundle run logistics_app_permissions -t dev
+```
+
+#### SDK/REST API path
+
+Create the app via REST API:
 ```python
 import requests
-resp = requests.patch(
-    f"{w.config.host}/api/2.0/apps/logistics-incident-response",
+resp = requests.post(
+    f"{w.config.host}/api/2.0/apps",
     headers={"Authorization": f"Bearer {w.config.token}"},
     json={
+        "name": "logistics-incident-response",
+        "description": "Logistics Control Center",
         "resources": [
             {"name": "app-sql-warehouse", "sql_warehouse": {"id": "{warehouse_id}", "permission": "CAN_USE"}},
-            {"name": "app-genie-space", "genie_space": {"space_id": "{genie_space_id}", "permission": "CAN_RUN"}}
+            {"name": "app-genie-space", "genie_space": {"space_id": "{genie_space_id}", "permission": "CAN_RUN"}},
+            {"name": "app-ka-endpoint", "serving_endpoint": {"name": "{ka_endpoint}", "permission": "CAN_QUERY"}}
         ]
     }
 )
 ```
 
-If KA endpoint was created, also add:
+Grant UC permissions using the SP's `applicationId` (UUID), not display name:
 ```python
-{"name": "app-ka-endpoint", "serving_endpoint": {"name": "{ka_endpoint}", "permission": "CAN_QUERY"}}
-```
+app_info = requests.get(f"{w.config.host}/api/2.0/apps/logistics-incident-response", ...).json()
+sp_app_id = app_info["service_principal"]["application_id"]
 
-## Step 5 — Grant permissions
-
-The app's service principal needs access to UC tables and the warehouse.
-
-### CLI path
-```bash
-databricks bundle run logistics_app_permissions -t dev
-```
-
-### SDK/SQL path
-
-**Important:** Use the service principal's `applicationId` (UUID), not the display name. The display name may contain spaces that UC cannot resolve.
-
-```python
-# Get the app's service principal
-app_info = requests.get(
-    f"{w.config.host}/api/2.0/apps/logistics-incident-response",
-    headers={"Authorization": f"Bearer {w.config.token}"}
-).json()
-sp_id = app_info["service_principal"]["id"]
-sp_app_id = app_info["service_principal"]["application_id"]  # UUID
-
-# Grant UC permissions using the applicationId
 w.statement_execution.execute_statement(
     warehouse_id="{warehouse_id}",
     statement=f"GRANT USE SCHEMA ON {catalog}.{schema} TO `{sp_app_id}`"
@@ -223,17 +189,15 @@ w.statement_execution.execute_statement(
 )
 ```
 
-**Note:** Warehouse and Genie Space permissions are auto-granted via the app's resource declarations (`app-sql-warehouse`, `app-genie-space`). You do NOT need to separately grant these.
+Warehouse and Genie Space permissions are auto-granted via app resource declarations.
 
-## Step 6 — Verify
+## Step 7 — Verify
 
 1. **Tables populated:** `SELECT count(*) FROM {catalog}.{schema}.centers` — should return rows
-2. **App running:** Check the app URL — confirm it loads
+2. **App running:** Get URL from deploy output, confirm it loads
 3. **Genie works:** Ask "How many active incidents?" in the Genie panel
 4. **KA panel:** Will be inactive if KA creation was skipped (expected)
 
 Print the app URL for the user.
 
-## Step 7 — Save config (optional)
-
-If the user didn't start with a config file, offer to save one for future redeployments.
+**Cleanup:** To tear down all resources, run `./cleanup.sh` from the repo root.
