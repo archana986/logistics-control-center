@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.2.1] - 2026-04-21
+
+### Fixed
+- `README.md` — added missing `harness/` folder to the Project Structure tree
+- `README.md` — filled in **License** section (Databricks Field Engineering demo)
+- `README.md` — filled in **Contributing** section (not accepting external contributions; fork-and-modify guidance for customers)
+
+---
+
 ## [1.2.0] - 2026-04-21
 
 ### Added
