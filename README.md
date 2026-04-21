@@ -117,7 +117,17 @@ logistics-control-center/
 ├── app.yaml                  # App runtime config (startup + env vars)
 ├── cleanup.sh                # Full teardown script
 ├── resources/
-│   └── app.yml               # App resource (included in Step 5)
+│   └── app.yml               # App resource (included in Step 6)
+│
+├── harness/                  # One-Click Deploy harness (Claude Code + Genie Code)
+│   ├── SKILL.md              # Skill router (entry point for both runtimes)
+│   ├── README.md             # Runtime usage and prompts
+│   └── resources/
+│       ├── DEMO_DEPLOY.md          # Demo deploy flow (synthetic data)
+│       ├── CUSTOMER_ADAPT_FLOW.md  # Customer data adapt flow (real data)
+│       ├── SCHEMA_CONTRACT.md      # Table/column definitions + alias map
+│       ├── CUSTOMER_ADAPT.md       # Discovery + mapping algorithm
+│       └── CONFIG_TEMPLATE.yaml    # Config template
 │
 ├── backend/                  # FastAPI Python backend
 │   ├── main.py               # App entry point
@@ -234,8 +244,24 @@ logistics-control-center/
 
 ## License
 
-TBD
+**Databricks Field Engineering demo.**
+
+This repository is not released under an open-source license. It is maintained by Databricks Field Engineering (SAs / DSAs) and shared with customers under standard Databricks customer engagement terms.
+
+If you are a customer using this as a starting point for your own deployment, you are free to fork and modify it for your own use within your Databricks workspace.
+
+For questions about reuse or distribution, contact the repo owner ([@archana986](https://github.com/archana986)).
 
 ## Contributing
 
-TBD
+**This repository is not accepting external contributions.**
+
+It is maintained as a Databricks Field Engineering demo / reference implementation. Issues and pull requests from outside the repo owners will not be reviewed or merged.
+
+If you'd like to use this as a starting point for your own work:
+
+1. **Fork the repo** — `gh repo fork archana986/logistics-control-center`
+2. Modify it freely in your fork
+3. Use the [One-Click Deploy](#one-click-deploy) flow to deploy to your own workspace
+
+If you find a bug or have a suggestion that benefits the upstream demo, you may open an issue describing the problem — but please do not submit PRs.
