@@ -6,6 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.2.0] - 2026-04-21
+
+### Added
+
+#### Deployment Harness (Claude Code + Databricks Genie Code)
+- New `harness/` folder with a `SKILL.md`-based one-command deployment flow
+- Two modes:
+  - **Demo deploy** — generates synthetic logistics data and deploys everything
+  - **Customer data adapt** — maps existing customer tables via adapter views
+- Works from both **Claude Code** (`/logistics-demo` skill) and **Databricks Genie Code** (`@harness/SKILL.md` reference)
+- Resources:
+  - `harness/SKILL.md` — skill router (entry point)
+  - `harness/README.md` — runtime usage and prompts
+  - `harness/resources/DEMO_DEPLOY.md` — demo flow with SDK/REST fallbacks (CLI not available in Genie Code)
+  - `harness/resources/CUSTOMER_ADAPT_FLOW.md` — customer data adapt flow
+  - `harness/resources/SCHEMA_CONTRACT.md` — table/column definitions and semantic alias map
+  - `harness/resources/CUSTOMER_ADAPT.md` — discovery + mapping algorithm
+  - `harness/resources/CONFIG_TEMPLATE.yaml` — config template
+
+### Changed
+- `databricks.yml` — added `harness/**` to the bundle `sync.include` list so harness files are uploaded to the workspace
+- `README.md` — added "One-Click Deploy" section (Claude Code + Genie Code); renamed "Quick Start" to "Manual Deploy (Quick Start)"
+
+### Fixed
+- `README.md` — corrected the clone URL from `archana-krishnamurthy_data` to `archana986`
+
+---
+
 ## [1.1.0] - 2026-04-16
 
 ### Changed
