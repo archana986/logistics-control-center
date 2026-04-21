@@ -1,10 +1,8 @@
 # Setup Guide - Logistics Control Center
 
-Deploy the Logistics Control Center on your Databricks workspace in minutes.
+Deploy the Logistics Control Center on your Databricks workspace.
 
-**Everything happens in Databricks** - no local setup required.
-
----
+**Everything runs from the CLI** — clone the repo locally, configure, and deploy.
 
 ## Prerequisites
 
@@ -13,84 +11,58 @@ Deploy the Logistics Control Center on your Databricks workspace in minutes.
 | **Databricks Workspace** | With Unity Catalog enabled |
 | **SQL Warehouse** | Serverless recommended; you need CAN_USE permission |
 | **Catalog Access** | You need CREATE SCHEMA permission on your target catalog |
+| **Databricks CLI** | [Install](https://docs.databricks.com/dev-tools/cli/install.html) and authenticate with `databricks auth login` |
 
----
+## Step 1: Clone the Repository
 
-## Step 1: Clone Repository to Databricks Workspace
-
-1. Open your Databricks workspace
-2. Go to **Workspace** → **Repos** → **Add Repo**
-3. Paste this URL:
-   ```
-   https://github.com/archana-krishnamurthy_data/logistics-control-center
-   ```
-4. Click **Create Repo**
-
-The repo will be cloned to: `/Repos/<your-username>/logistics-control-center`
-
----
+```bash
+git clone https://github.com/archana-krishnamurthy_data/logistics-control-center.git
+cd logistics-control-center
+```
 
 ## Step 2: Configure Your Workspace Values
 
-### Edit databricks.yml
+You need two values from your workspace:
 
-1. In Databricks, open `databricks.yml` from the repo
-2. Find the `targets.dev` section (~line 68) and update these values:
-
-```yaml
-targets:
-  dev:
-    mode: development
-    default: true
-    workspace:
-      profile: DEFAULT                        # Keep as DEFAULT for workspace execution
-    variables:
-      warehouse_id: "your-warehouse-id"       # ← Replace with your SQL Warehouse ID
-      catalog: "your-catalog"                 # ← Replace with your catalog name
-      schema: "logistics_control_center"
-      genie_space_id: ""                      # Leave empty for now
-      ka_endpoint: ""                         # Leave empty for now
-```
-
-**Where to find values:**
-
-| Value | Location in Databricks UI |
-|-------|---------------------------|
-| `warehouse_id` | SQL Warehouses → Click warehouse → Copy ID from URL or Overview |
+| Value | Where to Find It |
+|-------|-------------------|
+| `warehouse_id` | SQL Warehouses → Click your warehouse → Copy ID from URL or Overview |
 | `catalog` | Data Explorer → Select a catalog you own or have CREATE SCHEMA on |
 
-3. **Save the file** (Ctrl+S or Cmd+S)
+### Edit databricks.yml
+
+Open `databricks.yml` and find the `targets.dev.variables` section (~line 77). Replace the placeholders:
+
+```yaml
+    variables:
+      warehouse_id: "your-warehouse-id"        # ← Your SQL Warehouse ID
+      catalog: "your-catalog"                  # ← Your catalog name
+      schema: "logistics_control_center"
+```
 
 ### Edit app.yaml
 
-1. Open `app.yaml` from the repo
-2. Find the Unity Catalog Configuration section (~line 48) and update:
+Open `app.yaml` and find the Unity Catalog Configuration section (~line 49). Set your catalog:
 
 ```yaml
-  - name: DATABRICKS_SQL_WAREHOUSE_ID
-    value: "your-warehouse-id"                # ← Same as databricks.yml
   - name: DATABRICKS_CATALOG
-    value: "your-catalog"                     # ← Same as databricks.yml
+    value: "your-catalog"                      # ← Same catalog as databricks.yml
 ```
 
-3. **Save the file**
-
----
+**Save both files.** That's all for Step 2 — warehouse ID, Genie Space ID, and KA endpoint are auto-injected via `valueFrom` when the app deploys later.
 
 ## Step 3: Deploy Infrastructure
 
-Open the Databricks **Web Terminal** or run from your local CLI:
-
 ```bash
-# Navigate to the repo (in Web Terminal, you're already there)
-cd /Workspace/Repos/<your-username>/logistics-control-center
-
-# Validate configuration
-databricks bundle validate -t dev
-
-# Deploy infrastructure (pipeline, jobs, app)
 databricks bundle deploy -t dev
 ```
+
+This creates:
+- Streaming pipeline (Bronze/Silver/Gold)
+- Setup job
+- Streaming refresh job
+
+**Note:** The app is NOT deployed yet — it requires IDs that the setup job will create.
 
 Expected output:
 ```
@@ -99,9 +71,7 @@ Deploying resources...
 Deployment complete!
 ```
 
----
-
-## Step 4: Run Setup Job
+## Step 4: Run the Setup Job
 
 ```bash
 databricks bundle run logistics_setup -t dev
@@ -114,7 +84,7 @@ This takes **5-10 minutes** and creates:
 - Genie Space for analytics
 - Knowledge Assistant for document Q&A
 
-**Important:** When the job completes, look at the final task output for these values:
+**Important:** When the job completes, note these two values from the output:
 
 ```
 ════════════════════════════════════════════════════════════════════════════
@@ -124,128 +94,133 @@ SAVE THESE VALUES FOR STEP 5:
 ════════════════════════════════════════════════════════════════════════════
 ```
 
----
+## Step 5: Run the Streaming Refresh
 
-## Step 5: Add Agent IDs and Complete Deployment
+```bash
+databricks bundle run logistics_streaming_refresh -t dev
+```
 
-### Update databricks.yml
+This takes **3-5 minutes** and:
+- Appends incremental events to the raw data volumes
+- Runs the Bronze → Silver → Gold pipeline update
+- Refreshes serving tables for the app
+- Updates reroute optimization data
 
-1. Open `databricks.yml` again
-2. Add the IDs from Step 4 to the `targets.dev.variables` section:
+## Step 6: Add Agent IDs and Deploy the App
+
+### 6a. Add the include line to databricks.yml
+
+Open `databricks.yml` and add this line near the top (after the `sync:` block, before `workspace:`):
+
+```yaml
+include:
+  - resources/app.yml
+```
+
+### 6b. Add the agent IDs to databricks.yml
+
+In the same `targets.dev.variables` section you edited in Step 2, add the IDs from Step 4:
 
 ```yaml
     variables:
-      warehouse_id: "your-warehouse-id"
-      catalog: "your-catalog"
+      warehouse_id: "your-warehouse-id"                    # Already set
+      catalog: "your-catalog"                              # Already set
       schema: "logistics_control_center"
-      genie_space_id: "01f12abc123456789"     # ← Add your ID here
-      ka_endpoint: "ka-abc123-endpoint"        # ← Add your endpoint here
+      genie_space_id: "your-genie-space-id"                # ← From Step 4 output
+      ka_endpoint: "your-ka-endpoint"                      # ← From Step 4 output
 ```
 
-3. **Save the file**
-
-### Update app.yaml
-
-1. Open `app.yaml` again
-2. Add the same IDs to the Agent Bricks section (~line 65):
-
-```yaml
-  - name: DATABRICKS_GENIE_SPACE_ID
-    value: "01f12abc123456789"                 # ← Add your ID here
-  - name: DATABRICKS_KA_ENDPOINT
-    value: "ka-abc123-endpoint"                # ← Add your endpoint here
-```
-
-3. **Save the file**
-
-### Redeploy and Grant Permissions
+### 6c. Deploy and grant permissions
 
 ```bash
-# Redeploy with agent IDs
+# Deploy the app
 databricks bundle deploy -t dev
 
-# Grant app permissions to Unity Catalog
+# Grant the app's service principal access to Unity Catalog
 databricks bundle run logistics_app_permissions -t dev
 ```
 
----
-
-## Step 6: Access Your App
+## Step 7: Access Your App
 
 Your app URL is shown in the deployment output:
 
 ```
-App URL: https://logistics-incident-response-<workspace-id>.azuredatabricksapps.com
+App URL: https://logistics-incident-response-<workspace-id>.databricksapps.com
 ```
 
-Click the URL to open the Logistics Control Center!
-
----
+Click the URL to open the Logistics Control Center.
 
 ## Complete Workflow Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 1: Clone to Databricks (UI)                                          │
+│  STEP 1: Clone Repo                                                        │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  Workspace → Repos → Add Repo                                               │
-│  URL: https://github.com/archana-krishnamurthy_data/logistics-control-center│
+│  git clone <repo-url> && cd logistics-control-center                       │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 2: Edit Config Files (UI)                                            │
+│  STEP 2: Configure (2 files, 3 values)                                     │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  databricks.yml → targets.dev.variables: warehouse_id, catalog             │
-│  app.yaml → env: DATABRICKS_SQL_WAREHOUSE_ID, DATABRICKS_CATALOG           │
+│  databricks.yml → warehouse_id, catalog                                    │
+│  app.yaml → catalog                                                        │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 3: Deploy Infrastructure (Terminal)                                  │
+│  STEP 3: Deploy Infrastructure                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  databricks bundle validate -t dev                                          │
-│  databricks bundle deploy -t dev                                            │
+│  databricks bundle deploy -t dev                                           │
+│  Creates: pipeline, setup job, refresh job (no app yet)                    │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 4: Run Setup Job (Terminal, ~10 min)                                 │
+│  STEP 4: Run Setup Job (~10 min)                                           │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  databricks bundle run logistics_setup -t dev                               │
-│  → Note: GENIE_SPACE_ID and KA_ENDPOINT from output                        │
+│  databricks bundle run logistics_setup -t dev                              │
+│  → Note: genie_space_id and ka_endpoint from output                       │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 5: Add Agent IDs & Redeploy (UI + Terminal)                          │
+│  STEP 5: Run Streaming Refresh (~5 min)                                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  databricks.yml → Add genie_space_id, ka_endpoint                          │
-│  app.yaml → Add DATABRICKS_GENIE_SPACE_ID, DATABRICKS_KA_ENDPOINT          │
-│  databricks bundle deploy -t dev                                            │
-│  databricks bundle run logistics_app_permissions -t dev                     │
+│  databricks bundle run logistics_streaming_refresh -t dev                  │
+│  Appends events → runs pipeline → refreshes serving tables                │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 6: Access App                                                         │
+│  STEP 6: Add IDs + Deploy App (1 file)                                     │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  https://logistics-incident-response-<workspace-id>.azuredatabricksapps.com │
+│  databricks.yml → Add include: resources/app.yml                           │
+│  databricks.yml → Add genie_space_id + ka_endpoint                         │
+│  databricks bundle deploy -t dev                                           │
+│  databricks bundle run logistics_app_permissions -t dev                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  STEP 7: Access App                                                        │
+├─────────────────────────────────────────────────────────────────────────────┘
+│  https://logistics-incident-response-<workspace-id>.databricksapps.com     │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
-
----
 
 ## Configuration Summary
 
 | File | What to Change | When |
 |------|----------------|------|
 | `databricks.yml` | `warehouse_id`, `catalog` | Step 2 |
-| `databricks.yml` | `genie_space_id`, `ka_endpoint` | Step 5 |
-| `app.yaml` | `DATABRICKS_SQL_WAREHOUSE_ID`, `DATABRICKS_CATALOG` | Step 2 |
-| `app.yaml` | `DATABRICKS_GENIE_SPACE_ID`, `DATABRICKS_KA_ENDPOINT` | Step 5 |
+| `app.yaml` | `DATABRICKS_CATALOG` | Step 2 |
+| `databricks.yml` | Add `include: - resources/app.yml` | Step 6 |
+| `databricks.yml` | `genie_space_id`, `ka_endpoint` | Step 6 |
 
----
+**Values you never need to edit:**
+- `app.yaml` warehouse ID, Genie Space ID, KA endpoint — auto-injected via `valueFrom`
+- `resources/app.yml` — no edits needed
 
 ## Troubleshooting
 
@@ -253,34 +228,66 @@ Click the URL to open the Logistics Control Center!
 |-------|----------|
 | **"Catalog not found"** | Verify catalog access: `SHOW CATALOGS;` in SQL Editor |
 | **"Warehouse not found"** | Check warehouse ID; verify CAN_USE permission |
+| **Deploy fails with empty space_id** | Make sure you added `include: - resources/app.yml` only AFTER Step 4 (in Step 6) |
 | **Validation fails** | Ensure all placeholders are replaced with real values |
 | **App won't start** | Check logs at `https://<app-url>/logz` |
 | **Setup job fails** | Check task-level logs in Jobs UI; likely permissions issue |
+| **Genie Space: "You don't have CAN_MANAGE permission"** | See the Genie Space Permissions section below |
 
----
+### Genie Space Permissions
+
+The setup job automatically grants `CAN_MANAGE` on the Genie Space to the deploying user. If this fails (e.g., workspace permissions restrictions), you'll see a warning in the job output:
+
+```
+⚠ Could not grant CAN_MANAGE (non-fatal): ...
+```
+
+**To fix manually:**
+
+1. Open your Databricks workspace
+2. Navigate to **Genie** in the left sidebar
+3. Find the **Logistics Control Center Metrics** space
+4. Click the **Share** button (top right)
+5. Add your user email and set the permission to **Can Manage**
+6. Click **Done**
+
+You need `CAN_MANAGE` to edit instructions, update tables, or delete the Genie Space.
+If you only need read/query access, `CAN_RUN` is sufficient.
 
 ## Cleanup
 
-```bash
-# Remove all deployed resources
-databricks bundle destroy -t dev
+To remove **everything** created by this demo (DAB resources, Genie Space, KA endpoint, UC schema):
 
-# Manually delete schema if needed:
-# DROP SCHEMA IF EXISTS <catalog>.logistics_control_center CASCADE;
+```bash
+./cleanup.sh
 ```
 
----
+The script reads your `databricks.yml` for IDs, confirms before deleting, and handles each resource independently (if one is already gone, it continues).
 
 ## FAQ
 
-**Q: Do I need to install anything locally?**  
-No. Everything runs in Databricks.
+**Q: Do I need to install anything locally?**
+You need the Databricks CLI. Everything else runs in Databricks.
 
-**Q: Can I use a shared catalog?**  
+**Q: Can I deploy from the workspace terminal instead?**
+Yes. Clone the repo as a Git Folder, set `profile: DEFAULT` in databricks.yml, and run the same commands from the workspace terminal.
+
+**Q: Can I use a shared catalog?**
 Yes, as long as you have CREATE SCHEMA permission.
 
-**Q: How do I update the app after changes?**  
+**Q: How do I update the app after changes?**
 Run `databricks bundle deploy -t dev` to push updates.
 
-**Q: Where do I find the Genie Space ID after setup?**  
+**Q: Where do I find the Genie Space ID after setup?**
 In the setup job output, or: Workspace → Genie → Your space → ID in URL.
+
+**Q: Why is the app in a separate file (resources/app.yml)?**
+The app requires a Genie Space ID and KA endpoint that don't exist until the setup job creates them. By keeping the app in a separate include file, the first deploy succeeds without those IDs. You add the include after the setup job provides them.
+
+**Q: I can't edit or delete the Genie Space — it says I need CAN_MANAGE permission. How do I fix it?**
+The setup job tries to grant you `CAN_MANAGE` automatically. If that step failed (you'll see a `⚠ Could not grant CAN_MANAGE` warning in the job output), grant it manually:
+1. Open **Genie** in the workspace sidebar
+2. Click the **Logistics Control Center Metrics** space
+3. Click **Share** (top right) → Add your email → Set to **Can Manage** → **Done**
+
+If you don't see the Share button, ask a workspace admin to grant you `CAN_MANAGE` on the space.

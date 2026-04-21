@@ -6,9 +6,9 @@ This document explains all configuration files in the Logistics Control Center.
 
 ## Files You Need to Edit
 
-### `databricks.yml` - Databricks Asset Bundle
+### `databricks.yml` — Single Source of Truth
 
-**Purpose:** Defines all Databricks resources (pipeline, jobs, app) and deployment settings.
+**Purpose:** Defines all Databricks resources (pipeline, jobs), variables, and deployment targets.
 
 **What to change:** Only the `targets.dev` section:
 
@@ -16,13 +16,20 @@ This document explains all configuration files in the Logistics Control Center.
 targets:
   dev:
     workspace:
-      profile: <YOUR_PROFILE>        # Your Databricks CLI profile name
+      profile: your-cli-profile            # Your Databricks CLI profile name
     variables:
-      warehouse_id: "<YOUR_ID>"      # SQL Warehouse ID
-      catalog: "<YOUR_CATALOG>"      # Unity Catalog name
+      warehouse_id: "your-warehouse-id"    # SQL Warehouse ID
+      catalog: "your-catalog"              # Unity Catalog name
       schema: "logistics_control_center"
-      genie_space_id: ""             # Add after setup job
-      ka_endpoint: ""                # Add after setup job
+      genie_space_id: "your-genie-id"      # Add in Step 5 (from setup job)
+      ka_endpoint: "your-ka-endpoint"      # Add in Step 5 (from setup job)
+```
+
+**In Step 5, also add the include line near the top of the file:**
+
+```yaml
+include:
+  - resources/app.yml
 ```
 
 **Where to find values:**
@@ -31,37 +38,44 @@ targets:
 | `profile` | Run `databricks auth profiles` in terminal |
 | `warehouse_id` | Databricks UI → SQL Warehouses → Copy ID |
 | `catalog` | Databricks UI → Data Explorer → Your catalog |
-| `genie_space_id` | Output of `logistics_setup` job |
-| `ka_endpoint` | Output of `logistics_setup` job |
+| `genie_space_id` | Output of `logistics_setup` job (Step 4) |
+| `ka_endpoint` | Output of `logistics_setup` job (Step 4) |
 
----
+### `app.yaml` — App Runtime Configuration
 
-### `app.yaml` - Databricks App Runtime
+**Purpose:** Configures how the app runs (startup command, environment variables).
 
-**Purpose:** Configures how the app runs - startup command and environment variables.
-
-**What to change:** Environment variable values (must match `databricks.yml`):
+**What to change:** Only `DATABRICKS_CATALOG` (and optionally `DATABRICKS_SCHEMA`):
 
 ```yaml
 env:
-  - name: DATABRICKS_SQL_WAREHOUSE_ID
-    value: "<YOUR_ID>"               # Same as warehouse_id above
   - name: DATABRICKS_CATALOG
-    value: "<YOUR_CATALOG>"          # Same as catalog above
-  - name: DATABRICKS_GENIE_SPACE_ID
-    value: "<YOUR_GENIE_ID>"         # Same as genie_space_id above
-  - name: DATABRICKS_KA_ENDPOINT
-    value: "<YOUR_KA_ENDPOINT>"      # Same as ka_endpoint above
+    value: "your-catalog"                   # ← Same as databricks.yml
+  - name: DATABRICKS_SCHEMA
+    value: "logistics_control_center"
 ```
+
+**Values you do NOT edit in `app.yaml`:**
+- `DATABRICKS_SQL_WAREHOUSE_ID` — auto-injected via `valueFrom: app-sql-warehouse`
+- `DATABRICKS_GENIE_SPACE_ID` — auto-injected via `valueFrom: app-genie-space`
+- `DATABRICKS_KA_ENDPOINT` — auto-injected via `valueFrom: app-ka-endpoint`
+
+These `valueFrom` references pull the actual IDs from the app resource definition in `resources/app.yml`, which in turn reads from `databricks.yml` variables. This means each value is entered **once** in `databricks.yml`.
 
 **Startup command (don't change):**
 ```yaml
 command: pip install && npm install && npm run build && gunicorn ...
 ```
 
----
-
 ## Files You Don't Need to Edit
+
+### `resources/app.yml` — App Resource Definition
+
+**Purpose:** Defines the Databricks App and its permissions job. Included by `databricks.yml` after the setup job creates agent IDs.
+
+**Why it's separate:** The app requires a Genie Space ID and KA endpoint that don't exist until the setup job creates them. By keeping the app in a separate include file, the first deploy succeeds without those IDs. You add the include in Step 5 after the values are available.
+
+**No edits needed:** This file uses `${var.*}` references to read values from `databricks.yml`.
 
 ### `package.json` - Node.js Project
 

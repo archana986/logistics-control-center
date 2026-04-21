@@ -28,7 +28,7 @@ api_app.add_middleware(
 )
 
 # Get model endpoint from environment variable
-MODEL_ENDPOINT = os.getenv("DATABRICKS_MODEL_ENDPOINT", "databricks-gpt-oss-20b")
+MODEL_ENDPOINT = os.getenv("DATABRICKS_MODEL_ENDPOINT", "databricks-llama-4-maverick")
 
 # Get CLI profile name from environment variable (defaults to DEFAULT if not set)
 CLI_PROFILE = os.getenv("DATABRICKS_CLI_PROFILE", "DEFAULT")
