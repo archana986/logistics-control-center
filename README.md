@@ -86,7 +86,7 @@ See [`harness/README.md`](harness/README.md) for full details on both runtimes.
 ### Clone and Deploy
 
 ```bash
-git clone https://github.com/archana-krishnamurthy_data/logistics-control-center.git
+git clone https://github.com/archana986/logistics-control-center.git
 cd logistics-control-center
 ```
 
