@@ -48,7 +48,32 @@ AI-powered logistics incident response application built on Databricks. Features
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Quick Start
+## One-Click Deploy
+
+Skip the manual steps — deploy with a single command using **Claude Code** or **Databricks Genie Code**.
+
+### Claude Code
+
+```
+/logistics-demo
+```
+
+The skill handles everything: config patching, bundle deploy, setup job, agent ID extraction, redeploy, and permissions. Choose **demo mode** (synthetic data) or **customer data adapt** (map your existing tables).
+
+### Databricks Genie Code
+
+Open a notebook with Genie Code and prompt:
+
+```
+Read the file at harness/SKILL.md and follow the Demo Deploy instructions.
+Use catalog "my_catalog" and warehouse_id "my_warehouse_id".
+```
+
+See [`harness/README.md`](harness/README.md) for full details on both runtimes.
+
+---
+
+## Manual Deploy (Quick Start)
 
 ### Prerequisites
 
